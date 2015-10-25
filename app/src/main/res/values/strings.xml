@@ -1,0 +1,36 @@
+<resources>
+    <string name="app_name">Agenda</string>
+    
+    <!-- Strings related to login -->
+    <string name="prompt_email">Nom d\'usuari</string>
+    <string name="prompt_password">Contrasenya</string>
+    <string name="action_sign_in">Inicia sessió a l\'Intranet</string>
+    <string name="action_sign_in_short">Sign in</string>
+    <string name="error_invalid_password">La contrasenya és massa curta</string>
+    <string name="error_incorrect_password">La contrasenya és incorrecta</string>
+    <string name="error_field_required">No us podeu deixar aquest camp en blanc</string>
+
+    <!-- Strings from Calendar -->
+    <string name="title_activity_main">Calendari</string>
+
+    <string name="prompt_homework">Deures/Proves</string>
+    <string name="title_activity_settings">Configuració</string>
+    <string name="prompt_id">Introdueix l\'ID de l\'agenda des de la qual s\'obtindràn les dades</string>
+    <string name="ok">OK</string>
+    <string name="aid">ID Agenda</string>
+    <string name="homework">Deures</string>
+    <string name="nohomework">No hi ha deures per al dia</string>
+    <string name="credits">Idea original:\r\nGuillem Blázquez (4t ESO A)\r\n\r\nProgramat per:\r\nEnrique Martínez (4t ESO B)</string>
+
+    <!-- Strings related to Settings -->
+
+    <!-- General settings -->
+    <string name="pref_header_general">General</string>
+    <string name="pref_title_iwaid">ID agenda</string>
+
+    <!-- Example settings for Notifications -->
+    <string name="pref_credits">Crèdits</string>
+
+    <!-- Strings from AddToIW -->
+    <string name="title_activity_add_to_iw">AddToIWActivity</string>
+</resources>
