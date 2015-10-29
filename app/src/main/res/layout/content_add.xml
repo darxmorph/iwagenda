@@ -9,4 +9,34 @@
     app:layout_behavior="@string/appbar_scrolling_view_behavior" tools:showIn="@layout/activity_add"
     tools:context="com.henry.iwagenda.AddToIWActivity">
 
+    <Button
+        android:id="@+id/date"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/date_placeholder"
+        android:layout_alignParentTop="true" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/agenda"
+        android:id="@+id/agenda"
+        android:layout_alignParentTop="true"
+        android:layout_alignRight="@+id/homework"
+        android:layout_alignEnd="@+id/homework" />
+
+    <EditText
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:inputType="textMultiLine"
+        android:ems="10"
+        android:id="@+id/homework"
+        android:hint="@string/homework_exams"
+        android:layout_below="@+id/date"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:layout_marginTop="55dp"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true" />
+
 </RelativeLayout>

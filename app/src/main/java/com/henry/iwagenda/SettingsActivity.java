@@ -3,11 +3,14 @@ package com.henry.iwagenda;
 
 import android.annotation.TargetApi;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.preference.EditTextPreference;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
 import android.support.v7.app.ActionBar;
@@ -15,8 +18,20 @@ import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.support.v7.app.AlertDialog;
 import android.view.MenuItem;
+import android.widget.EditText;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
+import java.io.IOException;
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * A {@link PreferenceActivity} that presents a set of application settings. On
@@ -151,16 +166,28 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
             // to their values. When their values change, their summaries are
             // updated to reflect the new value, per the Android Design
             // guidelines.
-            bindPreferenceSummaryToValue(findPreference("iwaid"));
-            // TODO: select all on click ID (with XML)
-            findPreference("iwaid").setSummary(getActivity().getSharedPreferences("general", Context.MODE_PRIVATE).getString("iwaid","No definit"));
+            Preference agendes = findPreference("ags");
+            agendes.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+                @Override
+                public boolean onPreferenceClick(Preference preference) {
+                    // TODO: warn user and maybe restart app
+                    SharedPreferences sharedPref = getActivity().getSharedPreferences("general", Context.MODE_PRIVATE);
+                    SharedPreferences.Editor sharedPrefEdit = sharedPref.edit();
+                    if (sharedPref.contains("iwas")) {
+                        sharedPrefEdit.remove("iwas");
+                        sharedPrefEdit.commit();
+                    }
+                    return true;
+                }
+            });
         }
 
         @Override
         public boolean onOptionsItemSelected(MenuItem item) {
             int id = item.getItemId();
             if (id == android.R.id.home) {
-                startActivity(new Intent(getActivity(), SettingsActivity.class));
+                // startActivity(new Intent(getActivity(), MainActivity.class));
+                getActivity().finish();
                 return true;
             }
             return super.onOptionsItemSelected(item);

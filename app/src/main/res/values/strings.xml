@@ -33,4 +33,8 @@
 
     <!-- Strings from AddToIW -->
     <string name="title_activity_add_to_iw">AddToIWActivity</string>
+    <string name="date_placeholder">Data</string>
+    <string name="agenda">Agenda</string>
+    <string name="homework_exams">Deures/proves</string>
+
 </resources>

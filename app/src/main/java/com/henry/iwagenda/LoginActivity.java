@@ -210,10 +210,13 @@ public class LoginActivity extends AppCompatActivity {
             String securityTokenValue = new String();
 
             try {
-                Connection.Response iwRes = Jsoup.connect("https://agora.xtec.cat/escolapuigcerver/intranet/index.php?module=usuaris&type=user&func=login").userAgent("Android").method(Connection.Method.GET).execute();
-                Document welcomePage = iwRes.parse();
+                Connection.Response iwRes = Jsoup.connect("https://agora.xtec.cat/escolapuigcerver/intranet/index.php?module=usuaris&type=user&func=login")
+                        .userAgent("jsoup")
+                        .method(Connection.Method.GET)
+                        .execute();
+                Document loginPage = iwRes.parse();
                 iwCookies = iwRes.cookies();
-                Element csrftoken = welcomePage.getElementById("users_login_csrftoken");
+                Element csrftoken = loginPage.getElementById("users_login_csrftoken");
                 securityTokenKey = csrftoken.attr("name");
                 securityTokenValue = csrftoken.attr("value");
             }
@@ -223,16 +226,16 @@ public class LoginActivity extends AppCompatActivity {
 
             try {
                 iwLoginResp = Jsoup.connect("https://agora.xtec.cat/escolapuigcerver/intranet/index.php?module=usuaris&type=user&func=login")
+                        .data(securityTokenKey, securityTokenValue)
                         .data("authentication_method[modname]", "Users")
                         .data("authentication_method[method]", "uname")
                         .data("returnpage", "")
                         .data("event_type", "login_screen")
                         .data("rememberme", "1")
-                        .data(securityTokenKey,securityTokenValue)
                         .data("authentication_info[login_id]", mUser)
                         .data("authentication_info[pass]", mPassword)
                         .cookies(iwCookies)
-                        .userAgent("Android")
+                        .userAgent("jsoup")
                         .followRedirects(true)
                         .method(Connection.Method.POST).execute();
                 iwCookies = iwLoginResp.cookies();
@@ -288,7 +291,7 @@ public class LoginActivity extends AppCompatActivity {
 
             try {
                 iwRes = Jsoup.connect("http://agora.xtec.cat/escolapuigcerver/intranet/index.php")
-                        .userAgent("Android")
+                        .userAgent("jsoup")
                         .cookie(params[0],params[1])
                         .get();
             }
