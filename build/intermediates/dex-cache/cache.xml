@@ -2,25 +2,11 @@
 <items version="2" >
 
     <item
-        jar="C:\Users\Henry\AndroidStudioProjects\iwagenda\app\build\intermediates\exploded-aar\com.rengwuxian.materialedittext\library\2.1.4\jars\classes.jar"
+        jar="C:\Users\Henry\AndroidStudioProjects\iwagenda\app\build\intermediates\exploded-aar\com.wdullaer\materialdatetimepicker\1.5.4\jars\classes.jar"
         jumboMode="false"
         revision="23.0.1"
-        sha1="288913b440a3c61c30aa171095453a605432277a">
-        <dex dex="C:\Users\Henry\AndroidStudioProjects\iwagenda\app\build\intermediates\pre-dexed\release\classes-f8f162347258e20ebfb44979dd8d7ce8675346ad.jar" />
-    </item>
-    <item
-        jar="C:\Users\Henry\.gradle\caches\modules-2\files-2.1\com.nineoldandroids\library\2.4.0\e9b63380f3a242dbdbf103a2355ad7e43bad17cb\library-2.4.0.jar"
-        jumboMode="false"
-        revision="23.0.1"
-        sha1="e9b63380f3a242dbdbf103a2355ad7e43bad17cb">
-        <dex dex="C:\Users\Henry\AndroidStudioProjects\iwagenda\app\build\intermediates\pre-dexed\release\library-2.4.0-68cabda48d38bda84dd50eae26cabd72632cb151.jar" />
-    </item>
-    <item
-        jar="C:\Users\Henry\AndroidStudioProjects\iwagenda\app\build\intermediates\exploded-aar\net.xpece.android\support-preference\0.4.3\jars\classes.jar"
-        jumboMode="false"
-        revision="23.0.1"
-        sha1="79f5c2cd9dac93a8f896d84258261d3b0ac5a632">
-        <dex dex="C:\Users\Henry\AndroidStudioProjects\iwagenda\app\build\intermediates\pre-dexed\release\classes-cbede89cafe1a6c568206f27a64938f6acf30884.jar" />
+        sha1="25ed3c22824ec25eb68c650bb85d897f3ee0e8bc">
+        <dex dex="C:\Users\Henry\AndroidStudioProjects\iwagenda\app\build\intermediates\pre-dexed\debug\classes-4b05bfa52bb5f68638488aaed08ef584ad1caf09.jar" />
     </item>
 
 </items>

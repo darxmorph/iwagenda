@@ -5,8 +5,7 @@
     <string name="prompt_email">Nom d\'usuari</string>
     <string name="prompt_password">Contrasenya</string>
     <string name="action_sign_in">Inicia sessió a l\'Intranet</string>
-    <string name="action_sign_in_short">Sign in</string>
-    <string name="error_invalid_password">La contrasenya és massa curta</string>
+    <string name="action_sign_in_short">D\'acord</string>
     <string name="error_incorrect_password">La contrasenya és incorrecta</string>
     <string name="error_field_required">No us podeu deixar aquest camp en blanc</string>
 
@@ -16,8 +15,8 @@
     <string name="prompt_homework">Deures/Proves</string>
     <string name="title_activity_settings">Configuració</string>
     <string name="prompt_id">Introdueix l\'ID de l\'agenda des de la qual s\'obtindràn les dades</string>
-    <string name="ok">OK</string>
-    <string name="aid">ID Agenda</string>
+    <string name="ok">D\'acord</string>
+    <string name="cancel">Cancel·la</string>
     <string name="homework">Deures</string>
     <string name="nohomework">No hi ha deures per al dia</string>
     <string name="credits">Idea original:\r\nGuillem Blázquez (4t ESO A)\r\n\r\nProgramat per:\r\nEnrique Martínez (4t ESO B)</string>
@@ -26,15 +25,21 @@
 
     <!-- General settings -->
     <string name="pref_header_general">General</string>
-    <string name="pref_title_iwaid">ID agenda</string>
-
-    <!-- Example settings for Notifications -->
     <string name="pref_credits">Crèdits</string>
+    <string name="selected_agendas">Agendes seleccionades</string>
+    <string name="are_you_sure">N\'esteu segurs?</string>
+    <string name="changeagendas_description">L\'aplicació es reiniciarà per a poguer canviar les seleccions de les agendes</string>
+    <string name="choose_agendas">Escolliu les agendes per obtenir les anotacions</string>
+    <string name="change_agendas">Canvieu les agendes des de les quals s\'obtenen les dades</string>
 
     <!-- Strings from AddToIW -->
-    <string name="title_activity_add_to_iw">AddToIWActivity</string>
+    <string name="title_activity_add_to_iw">Afegeix una anotació a l\'agenda</string>
     <string name="date_placeholder">Data</string>
     <string name="agenda">Agenda</string>
     <string name="homework_exams">Deures/proves</string>
+    <string name="fill_all">Si us plau ompliu totes les dades</string>
+    <string name="chooseagenda_add">Escolliu l\'agenda on afegir l\'anotació</string>
+    <string name="add_success">S\'ha afegit l\'anotació</string>
+    <string name="add_fail">No s\'ha pogut afegit l\'anotació</string>
 
 </resources>

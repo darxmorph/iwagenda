@@ -7,18 +7,13 @@ import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.text.InputType;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.ArrayAdapter;
 
-import com.rengwuxian.materialedittext.MaterialEditText;
 import com.squareup.timessquare.CalendarCellDecorator;
 import com.squareup.timessquare.CalendarCellView;
 import com.squareup.timessquare.CalendarPickerView;
@@ -29,12 +24,10 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.text.DateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -52,12 +45,6 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        final View.OnClickListener mOnClickListener = new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent(getBaseContext(),SettingsActivity.class));
-            }
-        };
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -71,7 +58,6 @@ public class MainActivity extends AppCompatActivity {
         CalendarPickerView iwcalendar = (CalendarPickerView) findViewById(R.id.iwcalendar);
         iwcalendar.init(Calendar.getInstance().getTime(), future.getTime());
         chooseAgenda(false,null);
-        // Snackbar.make(v, "Coming soon...", Snackbar.LENGTH_LONG).setAction("Action", null).show();
     }
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -80,7 +66,6 @@ public class MainActivity extends AppCompatActivity {
     }
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-
         int id = item.getItemId();
         switch (id) {
             case R.id.action_settings:
@@ -103,7 +88,7 @@ public class MainActivity extends AppCompatActivity {
                 final Set<String> agsel = sharedPref.getStringSet("iwas", new HashSet<String>());
                 boolean[] selected = new boolean[agendes.size()];
                 new AlertDialog.Builder(MainActivity.this)
-                        .setTitle("Escolliu les agendes per obtenir les anotacions")
+                        .setTitle(R.string.choose_agendas)
                         .setMultiChoiceItems(items, selected, new DialogInterface.OnMultiChoiceClickListener() {
                             public void onClick(DialogInterface dialogInterface, int item, boolean b) {
                                 for (String s : agendes.keySet()) {
@@ -180,14 +165,6 @@ public class MainActivity extends AppCompatActivity {
                 .setIcon(R.drawable.ic_pencil)
                 .show();
     }
-    private boolean[] toPrimitiveArray(final List<Boolean> booleanList) {
-        final boolean[] primitives = new boolean[booleanList.size()];
-        int index = 0;
-        for (Boolean object : booleanList) {
-            primitives[index++] = object;
-        }
-        return primitives;
-    }
 
     private void callSync(final Set<String> agendes, final String cookieName, final String cookieValue, final String iwURL) {
         new parseIWagenda(agendes).execute(iwURL, cookieName, cookieValue);
@@ -238,7 +215,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(Elements result) {
             List<CalendarCellDecorator> decoratorList = new ArrayList<>();
-            decoratorList.add(new EventDecorator(MainActivity.this,new Date()));
+            decoratorList.add(new EventDecorator(new Date()));
             CalendarPickerView iwcalendar = (CalendarPickerView) findViewById(R.id.iwcalendar);
 
             for (Element element : result) {
@@ -246,7 +223,7 @@ public class MainActivity extends AppCompatActivity {
                     DateFormat df = new SimpleDateFormat("dd/MM/yyyy");
                     Date dr = df.parse(element.text());
                     if(dr.after(new Date()))
-                        decoratorList.add(new EventDecorator(MainActivity.this, dr));
+                        decoratorList.add(new EventDecorator(dr));
                     df.format(dr);
                 }
                 catch(ParseException pe) {
@@ -308,10 +285,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public class EventDecorator implements CalendarCellDecorator {
-        private Context context;
         private Date evd;
-        public EventDecorator (Context context, Date evd) {
-            this.context = context;
+        public EventDecorator (Date evd) {
             this.evd = evd;
         }
 

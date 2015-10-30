@@ -1,7 +1,7 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <Preference android:title="Agendes seleccionades"
+    <Preference android:title="@string/selected_agendas"
         android:key="ags"
-        android:summary="Canvieu les agendes des de les quals s'obtenen les dades"/>
+        android:summary="@string/change_agendas"/>
 
 </PreferenceScreen>

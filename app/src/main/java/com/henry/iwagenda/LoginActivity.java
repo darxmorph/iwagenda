@@ -38,7 +38,6 @@ public class LoginActivity extends AppCompatActivity {
      * Keep track of the login task to ensure we can cancel it if requested.
      */
     private UserLoginTask mAuthTask = null;
-    private isCookieValid mTryCookie = null;
 
     // UI references.
     private EditText mUserView;
@@ -103,8 +102,8 @@ public class LoginActivity extends AppCompatActivity {
         View focusView = null;
 
         // Check for a valid password, if the user entered one.
-        if (!TextUtils.isEmpty(password) && !isPasswordValid(password)) {
-            mPasswordView.setError(getString(R.string.error_invalid_password));
+        if (TextUtils.isEmpty(password)) {
+            mPasswordView.setError(getString(R.string.error_field_required));
             focusView = mPasswordView;
             cancel = true;
         }
@@ -136,8 +135,7 @@ public class LoginActivity extends AppCompatActivity {
             shed.putString("dck",sharedPref.getString("iwcookie",null));
             // Try login with saved cookie
             showProgress(true);
-            mTryCookie = new isCookieValid();
-            mTryCookie.execute("ZKSID242",sharedPref.getString("iwcookie",null));
+            new isCookieValid().execute("ZKSID242",sharedPref.getString("iwcookie",null));
 
         } else if (sharedPref.contains("username") && sharedPref.contains("password")) {
             String username = sharedPref.getString("username",null);
@@ -146,10 +144,6 @@ public class LoginActivity extends AppCompatActivity {
             mAuthTask = new UserLoginTask(username, password);
             mAuthTask.execute((Void) null);
         }
-    }
-
-    private boolean isPasswordValid(String password) {
-        return password.length() > 4;
     }
 
     /**
