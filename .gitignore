@@ -1,3 +1,12 @@
+# gradle-idea .gitignore
+.gradle
+/local.properties
+/.idea/workspace.xml
+/.idea/libraries
+/build
+/captures
+
+
 # Windows image file caches
 Thumbs.db
 ehthumbs.db
