@@ -2,44 +2,42 @@
     <string name="app_name">Agenda</string>
     
     <!-- Strings related to login -->
-    <string name="prompt_email">Nom d\'usuari</string>
-    <string name="prompt_password">Contrasenya</string>
-    <string name="action_sign_in">Inicia sessió a l\'Intranet</string>
-    <string name="action_sign_in_short">D\'acord</string>
-    <string name="error_incorrect_password">La contrasenya és incorrecta</string>
-    <string name="error_field_required">No us podeu deixar aquest camp en blanc</string>
+    <string name="prompt_email">Username</string>
+    <string name="prompt_password">Password</string>
+    <string name="action_sign_in">Sign in to Intranet</string>
+    <string name="action_sign_in_short">Sign in</string>
+    <string name="error_incorrect_password">Incorrect password</string>
+    <string name="error_field_required">This field is required</string>
 
     <!-- Strings from Calendar -->
-    <string name="title_activity_main">Calendari</string>
+    <string name="title_activity_main">Calendar</string>
 
-    <string name="prompt_homework">Deures/Proves</string>
-    <string name="title_activity_settings">Configuració</string>
-    <string name="prompt_id">Introdueix l\'ID de l\'agenda des de la qual s\'obtindràn les dades</string>
-    <string name="ok">D\'acord</string>
-    <string name="cancel">Cancel·la</string>
-    <string name="homework">Deures</string>
-    <string name="nohomework">No hi ha deures per al dia</string>
-    <string name="credits">Idea original:\r\nGuillem Blázquez (4t ESO A)\r\n\r\nProgramat per:\r\nEnrique Martínez (4t ESO B)</string>
+    <string name="title_activity_settings">Settings</string>
+    <string name="ok">Okay</string>
+    <string name="cancel">Cancel</string>
+    <string name="homework">Homework</string>
+    <string name="nohomework">There\'s no homework for</string>
+    <string name="credits">Original idea:\r\nGuillem Blázquez (4th ESO A)\r\n\r\nProgrammed by:\r\nEnrique Martínez (4th ESO B)</string>
 
     <!-- Strings related to Settings -->
 
     <!-- General settings -->
     <string name="pref_header_general">General</string>
-    <string name="pref_credits">Crèdits</string>
-    <string name="selected_agendas">Agendes seleccionades</string>
-    <string name="are_you_sure">N\'esteu segurs?</string>
-    <string name="changeagendas_description">L\'aplicació es reiniciarà per a poguer canviar les seleccions de les agendes</string>
-    <string name="choose_agendas">Escolliu les agendes per obtenir les anotacions</string>
-    <string name="change_agendas">Canvieu les agendes des de les quals s\'obtenen les dades</string>
+    <string name="pref_credits">Credits</string>
+    <string name="selected_agendas">Selected agendas</string>
+    <string name="are_you_sure">Are you sure?</string>
+    <string name="changeagendas_description">Application will restart in order to change your selected agendas</string>
+    <string name="choose_agendas">Choose the agendas you want to get notes from</string>
+    <string name="change_agendas">Change the agendas you want to get notes from</string>
 
     <!-- Strings from AddToIW -->
-    <string name="title_activity_add_to_iw">Afegeix una anotació a l\'agenda</string>
-    <string name="date_placeholder">Data</string>
+    <string name="title_activity_add_to_iw">Add a note to Agenda</string>
+    <string name="date_placeholder">Date</string>
     <string name="agenda">Agenda</string>
-    <string name="homework_exams">Deures/proves</string>
-    <string name="fill_all">Si us plau ompliu totes les dades</string>
-    <string name="chooseagenda_add">Escolliu l\'agenda on afegir l\'anotació</string>
-    <string name="add_success">S\'ha afegit l\'anotació</string>
-    <string name="add_fail">No s\'ha pogut afegit l\'anotació</string>
+    <string name="homework_exams">Homework/exams</string>
+    <string name="fill_all">Please fill all data</string>
+    <string name="chooseagenda_add">Choose the agenda to add the note to</string>
+    <string name="add_success">Note added</string>
+    <string name="add_fail">Something went wrong</string>
 
 </resources>

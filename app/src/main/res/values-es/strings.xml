@@ -1,0 +1,43 @@
+<resources>
+    <string name="app_name">Agenda</string>
+    
+    <!-- Strings related to login -->
+    <string name="prompt_email">Nombre de usuario</string>
+    <string name="prompt_password">Contraseña</string>
+    <string name="action_sign_in">Iniciar sesión en la Intranet</string>
+    <string name="action_sign_in_short">Iniciar sesión</string>
+    <string name="error_incorrect_password">La contraseña es incorrecta</string>
+    <string name="error_field_required">Este campo es necesario</string>
+
+    <!-- Strings from Calendar -->
+    <string name="title_activity_main">Calendario</string>
+
+    <string name="title_activity_settings">Configuración</string>
+    <string name="ok">De acuerdo</string>
+    <string name="cancel">Cancelar</string>
+    <string name="homework">Deberes</string>
+    <string name="nohomework">No hay deberes para el dia</string>
+    <string name="credits">Idea original:\r\nGuillem Blázquez (4t ESO A)\r\n\r\nProgramado por:\r\nEnrique Martínez (4t ESO B)</string>
+
+    <!-- Strings related to Settings -->
+
+    <!-- General settings -->
+    <string name="pref_header_general">General</string>
+    <string name="pref_credits">Créditos</string>
+    <string name="selected_agendas">Agendas seleccionadas</string>
+    <string name="are_you_sure">¿Estás seguro?</string>
+    <string name="changeagendas_description">La aplicación se reiniciará para poder cambiar las agendas seleccionadas</string>
+    <string name="choose_agendas">Escoge las agendas para obtener las anotaciones</string>
+    <string name="change_agendas">Cambia las agendas de las cuales se obtienen las anotaciones</string>
+
+    <!-- Strings from AddToIW -->
+    <string name="title_activity_add_to_iw">Añadir una anotación a la agenda</string>
+    <string name="date_placeholder">Fecha</string>
+    <string name="agenda">Agenda</string>
+    <string name="homework_exams">Deberes/exámenes</string>
+    <string name="fill_all">Rellena todos los campos</string>
+    <string name="chooseagenda_add">Escoge la agenda en la que añadir la anotación</string>
+    <string name="add_success">Se ha añadido la anotación</string>
+    <string name="add_fail">No se ha podido añadir la anotación</string>
+
+</resources>
