@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Agenda</string>
+    <string name="app_name">Diary</string>
     
     <!-- Strings related to login -->
     <string name="prompt_email">Username</string>
@@ -24,19 +24,19 @@
     <!-- General settings -->
     <string name="pref_header_general">General</string>
     <string name="pref_credits">Credits</string>
-    <string name="selected_agendas">Selected agendas</string>
+    <string name="selected_agendas">Selected diaries</string>
     <string name="are_you_sure">Are you sure?</string>
-    <string name="changeagendas_description">Application will restart in order to change your selected agendas</string>
-    <string name="choose_agendas">Choose the agendas you want to get notes from</string>
-    <string name="change_agendas">Change the agendas you want to get notes from</string>
+    <string name="changeagendas_description">Application will restart in order to change your selected diaries</string>
+    <string name="choose_agendas">Choose the diaries you want to get notes from</string>
+    <string name="change_agendas">Change the diaries you want to get notes from</string>
 
     <!-- Strings from AddToIW -->
-    <string name="title_activity_add_to_iw">Add a note to Agenda</string>
+    <string name="title_activity_add_to_iw">Add a note to diary</string>
     <string name="date_placeholder">Date</string>
     <string name="agenda">Agenda</string>
     <string name="homework_exams">Homework/exams</string>
     <string name="fill_all">Please fill all data</string>
-    <string name="chooseagenda_add">Choose the agenda to add the note to</string>
+    <string name="chooseagenda_add">Choose the diary to add the note to</string>
     <string name="add_success">Note added</string>
     <string name="add_fail">Something went wrong</string>
 
