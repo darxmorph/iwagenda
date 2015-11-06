@@ -121,13 +121,13 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
             addPreferencesFromResource(R.xml.pref_general);
             setHasOptionsMenu(true);
 
-            Preference agendes = findPreference("ags");
-            agendes.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+            Preference agendas = findPreference("ags");
+            agendas.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
                 @Override
                 public boolean onPreferenceClick(Preference preference) {
                     new AlertDialog.Builder(getActivity())
                             .setTitle(R.string.are_you_sure)
-                            .setMessage(R.string.changeagendas_description)
+                            .setMessage(R.string.change_agendas_description)
                             .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
                                 public void onClick(DialogInterface dialog, int whichButton) {
                                     SharedPreferences sharedPref = getActivity().getSharedPreferences("general", Context.MODE_PRIVATE);

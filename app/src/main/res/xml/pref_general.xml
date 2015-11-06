@@ -1,7 +1,20 @@
-<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:custom="http://schemas.android.com/apk/res-auto">
 
     <Preference android:title="@string/selected_agendas"
         android:key="ags"
         android:summary="@string/change_agendas"/>
+
+    <de.mrapp.android.preference.NumberPickerPreference
+        android:title="@string/months_show"
+        android:key="months"
+        android:defaultValue="2"
+        custom:min="1"
+        android:max="3"
+        android:dialogTitle="@string/months_show"
+        android:dialogMessage="@string/months_show_data"
+        custom:useInputMethod="false"
+        custom:wrapSelectorWheel="false"
+        custom:showValueAsSummary="true" />
 
 </PreferenceScreen>

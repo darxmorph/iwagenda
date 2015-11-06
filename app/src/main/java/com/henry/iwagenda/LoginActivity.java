@@ -131,8 +131,6 @@ public class LoginActivity extends AppCompatActivity {
     private void tryGetSavedLogin() {
         SharedPreferences sharedPref = LoginActivity.this.getSharedPreferences("auth", Context.MODE_PRIVATE);
         if (sharedPref.contains("iwcookie")) {
-            SharedPreferences.Editor shed = sharedPref.edit();
-            shed.putString("dck",sharedPref.getString("iwcookie",null));
             // Try login with saved cookie
             showProgress(true);
             new isCookieValid().execute("ZKSID242",sharedPref.getString("iwcookie",null));

@@ -53,11 +53,15 @@ public class MainActivity extends AppCompatActivity {
         });
         // Calendar init
         Calendar future = Calendar.getInstance();
-        future.add(Calendar.MONTH, 2);
+        future.add(Calendar.MONTH, MainActivity.this.getSharedPreferences("general", Context.MODE_PRIVATE).getInt("months", 2) - 1);
+        future.set(Calendar.DATE, future.getActualMaximum(Calendar.DATE));
+
+        Calendar present = Calendar.getInstance();
+        present.set(Calendar.DATE, present.getActualMinimum(Calendar.DATE));
 
         CalendarPickerView iwcalendar = (CalendarPickerView) findViewById(R.id.iwcalendar);
-        iwcalendar.init(Calendar.getInstance().getTime(), future.getTime());
-        chooseAgenda(false,null);
+        iwcalendar.init(present.getTime(), future.getTime());
+        chooseAgenda(false, null);
     }
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -76,50 +80,75 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void chooseAgenda(boolean hasMap, final Map<String,String> agendes) {
+    private void chooseAgenda(boolean hasMap, final Map<String,String> agendas) {
         final SharedPreferences sharedPref = MainActivity.this.getSharedPreferences("general", Context.MODE_PRIVATE);
         final SharedPreferences auth = MainActivity.this.getSharedPreferences("auth", Context.MODE_PRIVATE);
         final String iwURL = "http://agora.xtec.cat/escolapuigcerver/intranet/index.php?module=IWAgendas&any=" + Calendar.getInstance().get(Calendar.YEAR) + "&llistat=1";
         final String cookieName = "ZKSID242";
-        final String cookieValue = auth.getString("iwcookie",null);
+        final String cookieValue = auth.getString("iwcookie", null);
+        final int months = sharedPref.getInt("months",2);
         if (!sharedPref.contains("iwas")) {
             if (hasMap) {
-                final CharSequence[] items = agendes.keySet().toArray(new CharSequence[agendes.size()]);
+                final CharSequence[] items = agendas.keySet().toArray(new CharSequence[agendas.size()]);
                 final Set<String> agsel = sharedPref.getStringSet("iwas", new HashSet<String>());
-                boolean[] selected = new boolean[agendes.size()];
-                new AlertDialog.Builder(MainActivity.this)
+                boolean[] selected = new boolean[agendas.size()];
+                final AlertDialog askagendas = new AlertDialog.Builder(MainActivity.this)
                         .setTitle(R.string.choose_agendas)
                         .setMultiChoiceItems(items, selected, new DialogInterface.OnMultiChoiceClickListener() {
                             public void onClick(DialogInterface dialogInterface, int item, boolean b) {
-                                for (String s : agendes.keySet()) {
+                                for (String s : agendas.keySet()) {
                                     if (s == items[item]) {
                                         if (b) {
-                                            agsel.add(agendes.get(s));
+                                            agsel.add(agendas.get(s));
                                         } else {
-                                            agsel.remove(agendes.get(s));
+                                            agsel.remove(agendas.get(s));
                                         }
                                     }
                                 }
                             }
                         })
-                        .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialog, int whichButton) {
-                                SharedPreferences.Editor sharedPrefEdit = sharedPref.edit();
-                                if (sharedPref.contains("iwas")) {
-                                    sharedPrefEdit.remove("iwas");
-                                    sharedPrefEdit.commit();
-                                }
-                                sharedPrefEdit.putStringSet("iwas", agsel);
-                                sharedPrefEdit.commit();
-                                callSync(agsel, cookieName, cookieValue,iwURL);
-                            }
-                        })
-                        .show();
+                        .setPositiveButton(R.string.ok, null)
+                        .create();
+                View.OnClickListener checksave = new View.OnClickListener() {
+                    public void onClick(View v) {
+                        if (agsel.size() < 1) {
+                            new AlertDialog.Builder(MainActivity.this)
+                                    .setTitle(R.string.no_agenda_selected)
+                                    .setMessage(R.string.select_one_agenda_at_least)
+                                    .setNegativeButton(R.string.ok, null)
+                                    .show();
+                        } else if (agsel.size() > 2) {
+                            new AlertDialog.Builder(MainActivity.this)
+                                    .setTitle(R.string.too_many_agendas)
+                                    .setMessage(R.string.app_performance_data)
+                                    .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+                                        public void onClick(DialogInterface dialog, int which) {
+                                            SharedPreferences.Editor sharedPrefEdit = sharedPref.edit();
+                                            sharedPrefEdit.putStringSet("iwas", agsel);
+                                            sharedPrefEdit.commit();
+                                            callSync(agsel, cookieName, cookieValue, iwURL, months);
+                                            askagendas.dismiss();
+                                        }
+                                    })
+                                    .setNegativeButton(R.string.cancel, null)
+                                    .show();
+                        } else {
+                            SharedPreferences.Editor sharedPrefEdit = sharedPref.edit();
+                            sharedPrefEdit.putStringSet("iwas", agsel);
+                            sharedPrefEdit.commit();
+                            callSync(agsel, cookieName, cookieValue, iwURL, months);
+                            askagendas.dismiss();
+                        }
+                    }
+                };
+                askagendas.setCanceledOnTouchOutside(false);
+                askagendas.show();
+                askagendas.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(checksave);
             } else {
                 new getAgendaList().execute(iwURL,cookieName,cookieValue);
             }
         } else {
-            callSync(sharedPref.getStringSet("iwas",null),cookieName,cookieValue,iwURL);
+            callSync(sharedPref.getStringSet("iwas",null),cookieName,cookieValue,iwURL,months);
         }
     }
     class getAgendaList extends AsyncTask<String, Void, Elements> {
@@ -144,17 +173,17 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         protected void onPostExecute(Elements result) {
-            final Map<String,String> agendes = new HashMap<>();
+            final Map<String,String> agendas = new HashMap<>();
             for (Element agenda : result) {
                 String agtitle = agenda.attr("title");
                 String agurl = agenda.attr("href");
                 String id = agurl.substring(agurl.lastIndexOf("&daid=") + 6);
                 agtitle = agtitle.trim().replaceAll(" +", " ");
                 if (!(agtitle.equals("Personal"))) {
-                    agendes.put(agtitle,id);
+                    agendas.put(agtitle,id);
                 }
             }
-            chooseAgenda(true,agendes);
+            chooseAgenda(true,agendas);
         }
     }
 
@@ -166,8 +195,8 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
-    private void callSync(final Set<String> agendes, final String cookieName, final String cookieValue, final String iwURL) {
-        new parseIWagenda(agendes).execute(iwURL, cookieName, cookieValue);
+    private void callSync(final Set<String> agendas, final String cookieName, final String cookieValue, final String iwURL, final int months) {
+        new parseIWagenda(agendas, months).execute(iwURL, cookieName, cookieValue);
         CalendarPickerView iwcalendar = (CalendarPickerView) findViewById(R.id.iwcalendar);
         iwcalendar.setOnDateSelectedListener(new CalendarPickerView.OnDateSelectedListener() {
             @Override
@@ -175,7 +204,7 @@ public class MainActivity extends AppCompatActivity {
                 DateFormat dfd = new SimpleDateFormat("dd");
                 DateFormat dfm = new SimpleDateFormat("MM");
                 DateFormat dfy = new SimpleDateFormat("yy");
-                new parseIWday(dfd.format(date) + "/" + dfm.format(date) + "/" + dfy.format(date),agendes)
+                new parseIWday(dfd.format(date) + "/" + dfm.format(date) + "/" + dfy.format(date),agendas)
                         .execute(iwURL + "&mes=" + dfm.format(date) + "&dia=" + dfd.format(date), cookieName, cookieValue);
             }
             @Override
@@ -184,9 +213,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     class parseIWagenda extends AsyncTask<String, Void, Elements> {
-        private final Set<String> mAgendes;
-        parseIWagenda (Set<String> agendes) {
-            mAgendes = agendes;
+        private final Set<String> mAgendas;
+        private final int mnths;
+        parseIWagenda (Set<String> agendas, int months) {
+            mAgendas = agendas;
+            mnths = months;
         }
 
         @Override
@@ -195,9 +226,8 @@ public class MainActivity extends AppCompatActivity {
 
             try {
                 Calendar present = Calendar.getInstance();
-                int months = 3;
-                for (int i=0;i<months;i++) {
-                    for (String a : mAgendes) {
+                for (int i=0;i<mnths;i++) {
+                    for (String a : mAgendas) {
                         Document iw = Jsoup.connect(params[0] + "&mes=" + (present.get(Calendar.MONTH) + i + 1) + "&daid=" + a).cookie(params[1], params[2]).userAgent("jsoup").get();
                         Elements ev = iw.getElementsByAttributeValueStarting("id", "note_");
                         iwe.addAll(ev);
@@ -236,10 +266,10 @@ public class MainActivity extends AppCompatActivity {
 
     class parseIWday extends AsyncTask<String, Void, Elements> {
         String mevday;
-        Set<String> mAgendes;
-        parseIWday(String evday, Set<String> agendes) {
+        Set<String> mAgendas;
+        parseIWday(String evday, Set<String> agendas) {
             mevday = evday;
-            mAgendes = agendes;
+            mAgendas = agendas;
         }
 
         @Override
@@ -247,7 +277,7 @@ public class MainActivity extends AppCompatActivity {
             Elements iwe = new Elements();
 
             try {
-                for (String a : mAgendes) {
+                for (String a : mAgendas) {
                     Document iw = Jsoup.connect(params[0] + "&daid=" + a).cookie(params[1], params[2]).userAgent("jsoup").get();
                     Elements events = iw.getElementsByAttributeValueStarting("id", "note_");
                     iwe.addAll(events);

@@ -202,7 +202,7 @@ public class AddToIWActivity extends AppCompatActivity {
             if (hasMap) {
                 final CharSequence[] items = agendes.keySet().toArray(new CharSequence[agendes.size()]);
                 new AlertDialog.Builder(AddToIWActivity.this)
-                        .setTitle(R.string.chooseagenda_add)
+                        .setTitle(R.string.choose_agenda_add)
                         .setSingleChoiceItems(items, 1, new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialogInterface, int item) {
                             }

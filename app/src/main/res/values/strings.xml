@@ -12,7 +12,10 @@
     <!-- Strings from Calendar -->
     <string name="title_activity_main">Calendar</string>
 
-    <string name="title_activity_settings">Settings</string>
+    <string name="no_agenda_selected">No diary selected</string>
+    <string name="select_one_agenda_at_least">Select one diary at least</string>
+    <string name="too_many_agendas">Too many diaries selected</string>
+    <string name="app_performance_data">Application\'s performance could be affected and/or consume more data</string>
     <string name="ok">Okay</string>
     <string name="cancel">Cancel</string>
     <string name="homework">Homework</string>
@@ -22,21 +25,24 @@
     <!-- Strings related to Settings -->
 
     <!-- General settings -->
+    <string name="title_activity_settings">Settings</string>
     <string name="pref_header_general">General</string>
     <string name="pref_credits">Credits</string>
     <string name="selected_agendas">Selected diaries</string>
     <string name="are_you_sure">Are you sure?</string>
-    <string name="changeagendas_description">Application will restart in order to change your selected diaries</string>
+    <string name="change_agendas_description">Application will restart in order to change your selected diaries</string>
     <string name="choose_agendas">Choose the diaries you want to get notes from</string>
     <string name="change_agendas">Change the diaries you want to get notes from</string>
+    <string name="months_show">Months to show</string>
+    <string name="months_show_data">Change the amount of months you want to show. Increasing this value will increase data usage.</string>
 
     <!-- Strings from AddToIW -->
     <string name="title_activity_add_to_iw">Add a note to diary</string>
     <string name="date_placeholder">Date</string>
-    <string name="agenda">Agenda</string>
+    <string name="agenda">Diary</string>
     <string name="homework_exams">Homework/exams</string>
     <string name="fill_all">Please fill all data</string>
-    <string name="chooseagenda_add">Choose the diary to add the note to</string>
+    <string name="choose_agenda_add">Choose the diary to add the note to</string>
     <string name="add_success">Note added</string>
     <string name="add_fail">Something went wrong</string>
 
