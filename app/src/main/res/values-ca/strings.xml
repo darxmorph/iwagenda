@@ -60,6 +60,7 @@
     <string name="homework_exams">Deures/proves</string>
     <string name="fill_all">Si us plau ompliu totes les dades</string>
     <string name="choose_agenda_add">Escolliu l\'agenda on afegir l\'anotació</string>
+    <string name="must_choose_agenda">Heu d\'escollir l\'agenda on afegir l\'anotació</string>
     <string name="add_success">S\'ha afegit l\'anotació</string>
     <string name="add_fail">No s\'ha pogut afegit l\'anotació</string>
 

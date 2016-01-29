@@ -226,7 +226,7 @@ public class AddToIWActivity extends AppCompatActivity {
                         } else {
                             new AlertDialog.Builder(AddToIWActivity.this)
                                     .setTitle(R.string.no_agenda_selected)
-                                    .setMessage("noAgendaSelectedDescription")
+                                    .setMessage(R.string.must_choose_agenda)
                                     .setNegativeButton(R.string.ok, null)
                                     .show();
                         }

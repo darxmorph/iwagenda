@@ -60,6 +60,7 @@
     <string name="homework_exams">Homework/exams</string>
     <string name="fill_all">Please fill all data</string>
     <string name="choose_agenda_add">Choose the diary to add the note to</string>
+    <string name="must_choose_agenda">You must choose the diary to add the note to</string>
     <string name="add_success">Note added</string>
     <string name="add_fail">Something went wrong</string>
 

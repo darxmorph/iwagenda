@@ -60,6 +60,7 @@
     <string name="homework_exams">Deberes/exámenes</string>
     <string name="fill_all">Rellena todos los campos</string>
     <string name="choose_agenda_add">Escoge la agenda en la que añadir la anotación</string>
+    <string name="must_choose_agenda">Debes escoger la agenda en la que añadir la anotación</string>
     <string name="add_success">Se ha añadido la anotación</string>
     <string name="add_fail">No se ha podido añadir la anotación</string>
 
