@@ -1,46 +1,50 @@
 package com.henry.iwagenda;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
+import android.support.v4.content.ContextCompat;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewManager;
 
+import com.afollestad.materialdialogs.MaterialDialog;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.squareup.timessquare.CalendarCellDecorator;
 import com.squareup.timessquare.CalendarCellView;
 import com.squareup.timessquare.CalendarPickerView;
 
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
-
-import java.io.IOException;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.text.DateFormat;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
+    final iwAPI iw = new iwAPI();
+    private BroadcastReceiver themeChangeReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        SharedPreferences generalSharedPref = MainActivity.this.getSharedPreferences("general", Context.MODE_PRIVATE);
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -51,17 +55,24 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(new Intent(getBaseContext(), AddToIWActivity.class));
             }
         });
+
+        paintUI();
+
         // Calendar init
         Calendar future = Calendar.getInstance();
-        future.add(Calendar.MONTH, MainActivity.this.getSharedPreferences("general", Context.MODE_PRIVATE).getInt("months", 2) - 1);
+        future.add(Calendar.MONTH, generalSharedPref.getInt("months", 2) - 1);
         future.set(Calendar.DATE, future.getActualMaximum(Calendar.DATE));
 
         Calendar present = Calendar.getInstance();
         present.set(Calendar.DATE, present.getActualMinimum(Calendar.DATE));
-
         CalendarPickerView iwcalendar = (CalendarPickerView) findViewById(R.id.iwcalendar);
         iwcalendar.init(present.getTime(), future.getTime());
-        chooseAgenda(false, null);
+
+        // Fill calendar
+        int months = generalSharedPref.getInt("months", 2);
+        Set<Agenda> agendas = askUserToChooseAgendas(LoginActivity.cookiejar);
+        if (agendas != null)
+            calendarStuff(agendas, LoginActivity.cookiejar, months);
     }
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -79,252 +90,301 @@ public class MainActivity extends AppCompatActivity {
                 return super.onOptionsItemSelected(item);
         }
     }
+    @Override
+    protected void onDestroy() {
+        unregisterReceiver(themeChangeReceiver);
+        super.onDestroy();
+    }
 
-    private void chooseAgenda(boolean hasMap, final Map<String,String> agendas) {
-        final SharedPreferences sharedPref = MainActivity.this.getSharedPreferences("general", Context.MODE_PRIVATE);
-        final SharedPreferences auth = MainActivity.this.getSharedPreferences("auth", Context.MODE_PRIVATE);
-        final String iwURL = "http://agora.xtec.cat/escolapuigcerver/intranet/index.php?module=IWAgendas&any=" + Calendar.getInstance().get(Calendar.YEAR) + "&llistat=1";
-        final String cookieName = "ZKSID242";
-        final String cookieValue = auth.getString("iwcookie", null);
-        final int months = sharedPref.getInt("months",2);
-        if (!sharedPref.contains("iwas")) {
-            if (hasMap) {
-                final CharSequence[] items = agendas.keySet().toArray(new CharSequence[agendas.size()]);
-                final Set<String> agsel = sharedPref.getStringSet("iwas", new HashSet<String>());
-                boolean[] selected = new boolean[agendas.size()];
-                final AlertDialog askagendas = new AlertDialog.Builder(MainActivity.this)
-                        .setTitle(R.string.choose_agendas)
-                        .setMultiChoiceItems(items, selected, new DialogInterface.OnMultiChoiceClickListener() {
-                            public void onClick(DialogInterface dialogInterface, int item, boolean b) {
-                                for (String s : agendas.keySet()) {
-                                    if (s == items[item]) {
-                                        if (b) {
-                                            agsel.add(agendas.get(s));
-                                        } else {
-                                            agsel.remove(agendas.get(s));
+    /**
+     * Asks user to choose agendas
+     * Shows an AlertDialog to select agendas, based on the names
+     * If they were already chosen, returns a Set with the selected agendas
+     *
+     * @param  cookies  Session cookies (obtained after login)
+     * @return          Selected agendas (Set) / Saved agendas (Set)
+     */
+    private Set<Agenda> askUserToChooseAgendas(final Map<String,String> cookies) {
+        final SharedPreferences generalSharedPref = MainActivity.this.getSharedPreferences("general", Context.MODE_PRIVATE);
+        if (!generalSharedPref.contains("selectedAgendas")) {
+            MaterialDialog.Builder pleaseWaitBuilder = new MaterialDialog.Builder(MainActivity.this)
+                    .title(getText(R.string.please_wait))
+                    .content(getText(R.string.getting_things_ready))
+                    .progress(true, 0);
+
+            SharedPreferences themePref = MainActivity.this.getSharedPreferences("theme", Context.MODE_PRIVATE);
+            if (themePref.contains("colorAccent"))
+                pleaseWaitBuilder.widgetColor(themePref.getInt("colorAccent", ContextCompat.getColor(MainActivity.this, R.color.colorAccent)));
+
+            final MaterialDialog pleaseWait = pleaseWaitBuilder.build();
+
+            pleaseWait.setCancelable(false);
+            pleaseWait.setCanceledOnTouchOutside(false);
+            pleaseWait.show();
+
+            new AsyncTask<Void, Void, Set<Agenda>>(){
+                @Override
+                protected Set<Agenda> doInBackground(Void... params) {
+                    return iw.getAgendas(cookies);
+                }
+
+                @Override
+                protected void onPostExecute(Set<Agenda> result) {
+                    final Set<Agenda> agendas = result;
+                    final Set<String> agendaNameSet = new HashSet<>();
+                    for (Agenda a : agendas) {
+                        agendaNameSet.add(a.getName());
+                    }
+                    final CharSequence[] agendaNames = agendaNameSet.toArray(new CharSequence[agendas.size()]);
+                    final Set<Agenda> selectedAgendas = new HashSet<>();
+                    final boolean[] selected = new boolean[agendas.size()];
+
+                    pleaseWait.dismiss();
+
+                    final AlertDialog askagendas = new AlertDialog.Builder(MainActivity.this)
+                            .setTitle(R.string.choose_agendas)
+                            .setMultiChoiceItems(agendaNames, selected, new DialogInterface.OnMultiChoiceClickListener() {
+                                public void onClick(DialogInterface dialog, int which, boolean isChecked) {
+                                    selected[which] = isChecked;
+                                }
+                            })
+                            .setPositiveButton(R.string.ok, null)
+                            .create();
+
+                    View.OnClickListener sav = new View.OnClickListener() {
+                        public void onClick (View v) {
+                            if (!(agendaNameSet.size() == agendaNames.length && agendaNames.length == selected.length))
+                                throw new UnknownError("All variables should be the same length/size");
+
+                            selectedAgendas.clear();
+
+                            for (int i = 0; i < agendaNames.length; i++) {
+                                if (selected[i]) {
+                                    for (Agenda a : agendas) {
+                                        if (a.getName() == agendaNames[i]) {
+                                            selectedAgendas.add(a);
                                         }
                                     }
                                 }
                             }
-                        })
-                        .setPositiveButton(R.string.ok, null)
-                        .create();
-                View.OnClickListener checksave = new View.OnClickListener() {
-                    public void onClick(View v) {
-                        if (agsel.size() < 1) {
-                            new AlertDialog.Builder(MainActivity.this)
-                                    .setTitle(R.string.no_agenda_selected)
-                                    .setMessage(R.string.select_one_agenda_at_least)
-                                    .setNegativeButton(R.string.ok, null)
-                                    .show();
-                        } else if (agsel.size() > 2) {
-                            new AlertDialog.Builder(MainActivity.this)
-                                    .setTitle(R.string.too_many_agendas)
-                                    .setMessage(R.string.app_performance_data)
-                                    .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
-                                        public void onClick(DialogInterface dialog, int which) {
-                                            SharedPreferences.Editor sharedPrefEdit = sharedPref.edit();
-                                            sharedPrefEdit.putStringSet("iwas", agsel);
-                                            sharedPrefEdit.commit();
-                                            callSync(agsel, cookieName, cookieValue, iwURL, months);
-                                            askagendas.dismiss();
-                                        }
-                                    })
-                                    .setNegativeButton(R.string.cancel, null)
-                                    .show();
-                        } else {
-                            SharedPreferences.Editor sharedPrefEdit = sharedPref.edit();
-                            sharedPrefEdit.putStringSet("iwas", agsel);
-                            sharedPrefEdit.commit();
-                            callSync(agsel, cookieName, cookieValue, iwURL, months);
-                            askagendas.dismiss();
+                            if (selectedAgendas.size() < 1) {
+                                new AlertDialog.Builder(MainActivity.this)
+                                        .setTitle(R.string.no_agenda_selected)
+                                        .setMessage(R.string.select_one_agenda_at_least)
+                                        .setNegativeButton(R.string.ok, null)
+                                        .show();
+                            } else if (selectedAgendas.size() > 2) {
+                                new AlertDialog.Builder(MainActivity.this)
+                                        .setTitle(R.string.too_many_agendas)
+                                        .setMessage(R.string.app_performance_data)
+                                        .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+                                            public void onClick(DialogInterface dialog, int which) {
+                                                SharedPreferences.Editor sharedPrefEdit = generalSharedPref.edit();
+                                                Gson gson = new Gson();
+                                                String json = gson.toJson(selectedAgendas);
+                                                sharedPrefEdit.putString("selectedAgendas", json);
+                                                sharedPrefEdit.commit();
+                                                askagendas.dismiss();
+                                                int months = generalSharedPref.getInt("months", 2);
+                                                calendarStuff(agendas, LoginActivity.cookiejar, months);
+                                            }
+                                        })
+                                        .setNegativeButton(R.string.cancel, null)
+                                        .show();
+                            } else {
+                                SharedPreferences.Editor sharedPrefEdit = generalSharedPref.edit();
+                                Gson gson = new Gson();
+                                String json = gson.toJson(selectedAgendas);
+                                sharedPrefEdit.putString("selectedAgendas", json);
+                                sharedPrefEdit.commit();
+                                askagendas.dismiss();
+                                int months = generalSharedPref.getInt("months", 2);
+                                calendarStuff(agendas, LoginActivity.cookiejar, months);
+                            }
                         }
-                    }
-                };
-                askagendas.setCanceledOnTouchOutside(false);
-                askagendas.show();
-                askagendas.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(checksave);
-            } else {
-                new getAgendaList().execute(iwURL,cookieName,cookieValue);
-            }
-        } else {
-            callSync(sharedPref.getStringSet("iwas",null),cookieName,cookieValue,iwURL,months);
-        }
-    }
-    class getAgendaList extends AsyncTask<String, Void, Elements> {
-        @Override
-        protected Elements doInBackground(String... params) {
-            Elements ev = new Elements();
+                    };
 
-            try {
-                Document iw = Jsoup.connect(params[0])
-                        .userAgent("jsoup")
-                        .cookie(params[1],params[2])
-                        .get();
-                Calendar present = Calendar.getInstance();
-                ev = iw.select("[href^=index.php?module=IWAgendas&mes=" + (present.get(Calendar.MONTH) + 1) + "&any=" + present.get(Calendar.YEAR) + "&daid=]");
-            }
-
-            catch(IOException e) {
-                e.printStackTrace();
-            }
-            return ev;
-        }
-
-        @Override
-        protected void onPostExecute(Elements result) {
-            final Map<String,String> agendas = new HashMap<>();
-            for (Element agenda : result) {
-                String agtitle = agenda.attr("title");
-                String agurl = agenda.attr("href");
-                String id = agurl.substring(agurl.lastIndexOf("&daid=") + 6);
-                agtitle = agtitle.trim().replaceAll(" +", " ");
-                if (!(agtitle.equals("Personal"))) {
-                    agendas.put(agtitle,id);
+                    askagendas.setCanceledOnTouchOutside(false);
+                    askagendas.setCancelable(false);
+                    askagendas.show();
+                    askagendas.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(sav);
                 }
-            }
-            chooseAgenda(true,agendas);
+            }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+
+            return null;
+        } else {
+            Gson gson = new Gson();
+            String json = generalSharedPref.getString("selectedAgendas", null);
+            Type type = new TypeToken<Set<Agenda>>(){}.getType();
+
+            return gson.fromJson(json, type); // selectedAgendas
         }
     }
 
-    private void showAlert(String title, String text) {
-        new AlertDialog.Builder(MainActivity.this)
-                .setTitle(title)
-                .setMessage(text)
-                .setIcon(R.drawable.ic_pencil)
-                .show();
-    }
+    /**
+     * Does calendar stuff
+     * Sets calendar cell background based on the events
+     * and also contains the OnDateSelectedListener for the calendar
+     *
+     * @param  agendas  Set of Agenda to look for events
+     * @param  cookies  Session cookies (obtained after login)
+     */
+    private void calendarStuff(final Set<Agenda> agendas, final Map<String,String> cookies, final int months) {
+        final CalendarPickerView iwcalendar = (CalendarPickerView) findViewById(R.id.iwcalendar);
+        final SwipeRefreshLayout srl = (SwipeRefreshLayout) findViewById(R.id.activity_main_swipe_refresh_layout);
 
-    private void callSync(final Set<String> agendas, final String cookieName, final String cookieValue, final String iwURL, final int months) {
-        new parseIWagenda(agendas, months).execute(iwURL, cookieName, cookieValue);
-        CalendarPickerView iwcalendar = (CalendarPickerView) findViewById(R.id.iwcalendar);
+        srl.setRefreshing(true);
+        refreshCalendarEvents refreshCalendarEvents = new refreshCalendarEvents(agendas, cookies, months);
+        refreshCalendarEvents.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+
+        srl.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                refreshCalendarEvents refreshCalendarEvents = new refreshCalendarEvents(agendas, cookies, months);
+                refreshCalendarEvents.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+            }
+        });
+
         iwcalendar.setOnDateSelectedListener(new CalendarPickerView.OnDateSelectedListener() {
             @Override
-            public void onDateSelected(Date date) {
-                DateFormat dfd = new SimpleDateFormat("dd");
-                DateFormat dfm = new SimpleDateFormat("MM");
-                DateFormat dfy = new SimpleDateFormat("yy");
-                new parseIWday(dfd.format(date) + "/" + dfm.format(date) + "/" + dfy.format(date),agendas)
-                        .execute(iwURL + "&mes=" + dfm.format(date) + "&dia=" + dfd.format(date), cookieName, cookieValue);
+            public void onDateSelected(final Date date) {
+
+                MaterialDialog.Builder eventBuilder = new MaterialDialog.Builder(MainActivity.this)
+                        .title(getText(R.string.homework) + " " + iwAPI.iwDateFormats.date.format(date))
+                        .content(getText(R.string.please_wait))
+                        .iconRes(R.drawable.ic_pencil)
+                        .progress(true, 0);
+
+                SharedPreferences themePref = MainActivity.this.getSharedPreferences("theme", Context.MODE_PRIVATE);
+                if (themePref.contains("colorAccent"))
+                    eventBuilder.widgetColor(themePref.getInt("colorAccent", ContextCompat.getColor(MainActivity.this, R.color.colorAccent)));
+
+                final MaterialDialog event = eventBuilder.build();
+
+                event.getWindow().getAttributes().windowAnimations = R.style.dialog_animation;
+
+                event.setCanceledOnTouchOutside(false);
+                event.setCancelable(false);
+
+                event.show();
+
+                new AsyncTask<String, Void, Set<Event>>(){
+                    @Override
+                    protected Set<Event> doInBackground(String... params) {
+                        return iw.getEventsForDate(agendas,date,cookies);
+                    }
+
+                    @Override
+                    protected void onPostExecute(Set<Event> result) {
+                        String messageToShow = "";
+                        if (!result.isEmpty()) {
+                            for (Event e : result) {
+                                messageToShow += e.getText();
+                                messageToShow += "\n";
+                                messageToShow += "\n";
+                            }
+                            messageToShow = messageToShow.substring(0, messageToShow.length() - 2);
+                        } else {
+                            messageToShow = getText(R.string.nohomework) + " " + iwAPI.iwDateFormats.date.format(date);
+                        }
+                        // pleaseWait.getProgressBar().setVisibility(View.GONE);
+                        ((ViewManager)event.getProgressBar().getParent()).removeView(event.getProgressBar());
+                        event.getContentView().setPadding(0, 0, 0, 0);
+                        event.setCancelable(true);
+                        event.setCanceledOnTouchOutside(true);
+                        event.getContentView().setText(messageToShow);
+                        // TextView messageView = (TextView) event.findViewById(android.R.id.message);
+                        // messageView.setText(messageToShow);
+                        // event.setMessage(messageToShow);
+                    }
+                }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
             }
             @Override
             public void onDateUnselected(Date date) {}
         });
     }
 
-    class parseIWagenda extends AsyncTask<String, Void, Elements> {
-        private final Set<String> mAgendas;
-        private final int mnths;
-        parseIWagenda (Set<String> agendas, int months) {
-            mAgendas = agendas;
-            mnths = months;
+    private class refreshCalendarEvents extends AsyncTask<String, Void, List<CalendarCellDecorator>> {
+        final Set<Agenda> agendas;
+        final Map<String,String> cookies;
+        final int months;
+
+        refreshCalendarEvents(Set<Agenda> agendas, Map<String,String> cookies, final int months) {
+            this.agendas = agendas;
+            this.cookies = cookies;
+            this.months = months;
         }
 
         @Override
-        protected Elements doInBackground(String... params) {
-            Elements iwe = new Elements();
-
-            try {
-                Calendar present = Calendar.getInstance();
-                for (int i=0;i<mnths;i++) {
-                    for (String a : mAgendas) {
-                        Document iw = Jsoup.connect(params[0] + "&mes=" + (present.get(Calendar.MONTH) + i + 1) + "&daid=" + a).cookie(params[1], params[2]).userAgent("jsoup").get();
-                        Elements ev = iw.getElementsByAttributeValueStarting("id", "note_");
-                        iwe.addAll(ev);
-                    }
-                }
-            }
-
-            catch(Throwable t) {
-                t.printStackTrace();
-            }
-
-            return iwe;
-        }
-
-        @Override
-        protected void onPostExecute(Elements result) {
+        protected List<CalendarCellDecorator> doInBackground(String... params) {
+            SharedPreferences generalSharedPref = MainActivity.this.getSharedPreferences("theme", Context.MODE_PRIVATE);
             List<CalendarCellDecorator> decoratorList = new ArrayList<>();
-            decoratorList.add(new EventDecorator(new Date()));
+            int colorBefore = generalSharedPref.getInt("colorBefore", ContextCompat.getColor(MainActivity.this, R.color.colorAccent));
+            int colorAfter = generalSharedPref.getInt("colorAfter", ContextCompat.getColor(MainActivity.this,R.color.colorAccent));
+            for (Date d : iw.getEventDateSet(agendas, cookies, months)) {
+                if (d.after(new Date())) {
+                    decoratorList.add(new EventDecorator(d,colorAfter));
+                } else {
+                    decoratorList.add(new EventDecorator(d,colorBefore));
+                }
+            }
+            return decoratorList;
+        }
+
+        @Override
+        protected void onPostExecute(List<CalendarCellDecorator> result) {
             CalendarPickerView iwcalendar = (CalendarPickerView) findViewById(R.id.iwcalendar);
-
-            for (Element element : result) {
-                try {
-                    DateFormat df = new SimpleDateFormat("dd/MM/yyyy");
-                    Date dr = df.parse(element.text());
-                    if(dr.after(new Date()))
-                        decoratorList.add(new EventDecorator(dr));
-                    df.format(dr);
-                }
-                catch(ParseException pe) {
-                    pe.printStackTrace();
-                }
-            }
-            iwcalendar.setDecorators(decoratorList);
-        }
-    }
-
-    class parseIWday extends AsyncTask<String, Void, Elements> {
-        String mevday;
-        Set<String> mAgendas;
-        parseIWday(String evday, Set<String> agendas) {
-            mevday = evday;
-            mAgendas = agendas;
-        }
-
-        @Override
-        protected Elements doInBackground(String... params) {
-            Elements iwe = new Elements();
-
-            try {
-                for (String a : mAgendas) {
-                    Document iw = Jsoup.connect(params[0] + "&daid=" + a).cookie(params[1], params[2]).userAgent("jsoup").get();
-                    Elements events = iw.getElementsByAttributeValueStarting("id", "note_");
-                    iwe.addAll(events);
-                }
-            }
-
-            catch(Throwable t) {
-                t.printStackTrace();
-            }
-
-            return iwe;
-        }
-
-        @Override
-        protected void onPostExecute(Elements result) {
-            String res = new String();
-
-            if (result.hasText()) {
-                for (Element element : result) {
-                    String tmpstr = element.text();
-                    tmpstr = tmpstr.replace("Tot el dia", "");
-                    tmpstr = tmpstr.replace("---", "");
-                    tmpstr = tmpstr.substring(1);
-                    tmpstr += "\r\n";
-                    tmpstr += "\r\n";
-                    res += tmpstr;
-                }
-                res = res.substring(0,res.length()-4);
-                showAlert(getText(R.string.homework) + " " + mevday,res);
-            } else {
-                res = getText(R.string.nohomework) + " " + mevday;
-                showAlert(getText(R.string.homework) + " " + mevday, res);
-            }
+            SwipeRefreshLayout srl = (SwipeRefreshLayout) findViewById(R.id.activity_main_swipe_refresh_layout);
+            iwcalendar.setDecorators(result);
+            srl.setRefreshing(false);
         }
     }
 
     public class EventDecorator implements CalendarCellDecorator {
         private Date evd;
-        public EventDecorator (Date evd) {
+        private int BackgroundColor;
+        public EventDecorator (Date evd, int BackgroundColor) {
             this.evd = evd;
+            this.BackgroundColor = BackgroundColor;
         }
 
         @Override
         public void decorate(CalendarCellView calendarCellView, Date date) {
             if(date.equals(evd)) {
-                calendarCellView.setBackgroundResource(R.color.colorAccent);
+                calendarCellView.setBackgroundColor(BackgroundColor);
             }
         }
+    }
+
+    private void paintUI() {
+        tintUI();
+        // Receive theme change events
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("THEME_CHANGED");
+
+        themeChangeReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                tintUI();
+            }
+        };
+
+        registerReceiver(themeChangeReceiver, filter);
+    }
+
+    private void tintUI() {
+        SharedPreferences themePref = MainActivity.this.getSharedPreferences("theme", Context.MODE_PRIVATE);
+        // Toolbar
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        if (themePref.contains("colorPrimary"))
+            toolbar.setBackgroundColor(themePref.getInt("colorPrimary", ContextCompat.getColor(MainActivity.this, R.color.colorPrimary)));
+        // FloatingActionButton
+        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+        if (themePref.contains("colorAccent"))
+            fab.setBackgroundTintList(ColorStateList.valueOf(themePref.getInt("colorAccent", ContextCompat.getColor(MainActivity.this, R.color.colorAccent))));
+        // SwipeRefreshLayout
+        SwipeRefreshLayout srl = (SwipeRefreshLayout) findViewById(R.id.activity_main_swipe_refresh_layout);
+        if (themePref.contains("colorAccent"))
+            srl.setColorSchemeColors(themePref.getInt("colorAccent", ContextCompat.getColor(MainActivity.this, R.color.colorAccent)));
     }
 }

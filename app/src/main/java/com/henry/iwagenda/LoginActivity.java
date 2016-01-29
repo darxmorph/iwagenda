@@ -6,6 +6,12 @@ import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
+import android.graphics.drawable.ColorDrawable;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.support.v4.content.ContextCompat;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 
 import android.os.AsyncTask;
@@ -13,6 +19,7 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -27,12 +34,17 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
+
+import me.zhanghai.android.materialprogressbar.MaterialProgressBar;
 
 /**
  * A login screen that offers login via email/password.
  */
 public class LoginActivity extends AppCompatActivity {
+
+    protected static Map<String,String> cookiejar;
 
     /**
      * Keep track of the login task to ensure we can cancel it if requested.
@@ -44,11 +56,15 @@ public class LoginActivity extends AppCompatActivity {
     private EditText mPasswordView;
     private View mProgressView;
     private View mLoginFormView;
+    private View mNoInternetView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
+        // Custom color
+        paintUI();
+
         // Set up the login form.
         mUserView = (EditText) findViewById(R.id.username);
 
@@ -74,9 +90,25 @@ public class LoginActivity extends AppCompatActivity {
 
         mLoginFormView = findViewById(R.id.login_form);
         mProgressView = findViewById(R.id.login_progress);
+        mNoInternetView = findViewById(R.id.no_internet);
 
-        // Attempt get saved login
-        tryGetSavedLogin();
+        Button mNoInternetRetryButton = (Button) findViewById(R.id.no_internet_retry);
+        mNoInternetRetryButton.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                showNoInternet(false);
+                tryGetSavedLogin();
+            }
+        });
+
+        // Check internet connection
+        if (!(isConnectedToInternet())) {
+            showNoInternet(true);
+        } else {
+            tryGetSavedLogin();
+        }
+
+        // tryGetSavedLogin();
     }
 
 
@@ -130,12 +162,8 @@ public class LoginActivity extends AppCompatActivity {
 
     private void tryGetSavedLogin() {
         SharedPreferences sharedPref = LoginActivity.this.getSharedPreferences("auth", Context.MODE_PRIVATE);
-        if (sharedPref.contains("iwcookie")) {
-            // Try login with saved cookie
-            showProgress(true);
-            new isCookieValid().execute("ZKSID242",sharedPref.getString("iwcookie",null));
 
-        } else if (sharedPref.contains("username") && sharedPref.contains("password")) {
+        if (sharedPref.contains("username") && sharedPref.contains("password")) {
             String username = sharedPref.getString("username",null);
             String password = sharedPref.getString("password",null);
             showProgress(true);
@@ -152,6 +180,7 @@ public class LoginActivity extends AppCompatActivity {
         // On Honeycomb MR2 we have the ViewPropertyAnimator APIs, which allow
         // for very easy animations. If available, use these APIs to fade-in
         // the progress spinner.
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB_MR2) {
             int shortAnimTime = getResources().getInteger(android.R.integer.config_shortAnimTime);
 
@@ -180,6 +209,11 @@ public class LoginActivity extends AppCompatActivity {
         }
     }
 
+    private void showNoInternet(boolean show) {
+        mNoInternetView.setVisibility(show ? View.VISIBLE : View.GONE);
+        mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
+    }
+
     /**
      * Represents an asynchronous login/registration task used to authenticate
      * the user.
@@ -196,14 +230,14 @@ public class LoginActivity extends AppCompatActivity {
 
         @Override
         protected Boolean doInBackground(Void... params) {
-            Connection.Response iwLoginResp = null;
-            Map<String,String> iwCookies = null;
-            String securityTokenKey = new String();
-            String securityTokenValue = new String();
+            Connection.Response iwLoginResp;
+            Map<String,String> iwCookies;
+            String securityTokenKey;
+            String securityTokenValue;
 
             try {
                 Connection.Response iwRes = Jsoup.connect("https://agora.xtec.cat/escolapuigcerver/intranet/index.php?module=usuaris&type=user&func=login")
-                        .userAgent("jsoup")
+                        .userAgent(iwAPI.userAgent)
                         .method(Connection.Method.GET)
                         .execute();
                 Document loginPage = iwRes.parse();
@@ -214,6 +248,7 @@ public class LoginActivity extends AppCompatActivity {
             }
             catch(IOException e) {
                 e.printStackTrace();
+                return null;
             }
 
             try {
@@ -227,20 +262,21 @@ public class LoginActivity extends AppCompatActivity {
                         .data("authentication_info[login_id]", mUser)
                         .data("authentication_info[pass]", mPassword)
                         .cookies(iwCookies)
-                        .userAgent("jsoup")
+                        .userAgent(iwAPI.userAgent)
                         .followRedirects(true)
                         .method(Connection.Method.POST).execute();
                 iwCookies = iwLoginResp.cookies();
             }
             catch (IOException e) {
                 e.printStackTrace();
+                return null;
             }
 
             try {
                 if (iwLoginResp.parse().text().contains("Agendes")) {
                     SharedPreferences sharedPref = LoginActivity.this.getSharedPreferences("auth", Context.MODE_PRIVATE);
                     SharedPreferences.Editor sharedPrefEdit = sharedPref.edit();
-                    sharedPrefEdit.putString("iwcookie", iwCookies.get("ZKSID242"));
+                    cookiejar = iwCookies;
                     sharedPrefEdit.putString("username", mUser);
                     sharedPrefEdit.putString("password", mPassword);
                     sharedPrefEdit.commit();
@@ -258,11 +294,18 @@ public class LoginActivity extends AppCompatActivity {
             mAuthTask = null;
             // showProgress(false);
 
+            if (success == null) {
+                showNoInternet(true);
+                showProgress(false);
+                return;
+            }
+
             if (success) {
                 startActivity(new Intent(getBaseContext(),MainActivity.class));
                 finish();
             } else {
                 showProgress(false);
+                mUserView.setText(mUser);
                 mPasswordView.setError(getString(R.string.error_incorrect_password));
                 mPasswordView.requestFocus();
             }
@@ -274,57 +317,23 @@ public class LoginActivity extends AppCompatActivity {
             showProgress(false);
         }
     }
+    private void paintUI() {
+        tintUI();
+    }
+    private void tintUI() {
+        SharedPreferences themePref = LoginActivity.this.getSharedPreferences("theme", Context.MODE_PRIVATE);
+        ActionBar bar = getSupportActionBar();
+        MaterialProgressBar progressBar = (MaterialProgressBar) findViewById(R.id.login_progress);
+        if (themePref.contains("colorPrimary"))
+            bar.setBackgroundDrawable(new ColorDrawable(themePref.getInt("colorPrimary", ContextCompat.getColor(LoginActivity.this, R.color.colorPrimary))));
+        if (themePref.contains("colorAccent"))
+            progressBar.setProgressTintList(ColorStateList.valueOf(themePref.getInt("colorAccent", ContextCompat.getColor(LoginActivity.this, R.color.colorAccent))));
+    }
 
-    public class isCookieValid extends AsyncTask<String, Void, Boolean> {
-
-        @Override
-        protected Boolean doInBackground(String... params) {
-            Document iwRes = null;
-
-            try {
-                iwRes = Jsoup.connect("http://agora.xtec.cat/escolapuigcerver/intranet/index.php")
-                        .userAgent("jsoup")
-                        .cookie(params[0],params[1])
-                        .get();
-            }
-            catch(IOException e) {
-                e.printStackTrace();
-            }
-
-            try {
-                if (iwRes.text().contains("Agendes")) {
-                    return true;
-                } else {
-                    SharedPreferences sharedPref = LoginActivity.this.getSharedPreferences("auth", Context.MODE_PRIVATE);
-                    SharedPreferences.Editor sharedPrefEdit = sharedPref.edit();
-                    sharedPrefEdit.remove("iwcookie");
-                    sharedPrefEdit.commit();
-                }
-            }
-            catch(Exception e) {
-                e.printStackTrace();
-            }
-            return false;
-        }
-
-        @Override
-        protected void onPostExecute(final Boolean success) {
-            mAuthTask = null;
-            // showProgress(false);
-
-            if (success) {
-                startActivity(new Intent(getBaseContext(),MainActivity.class));
-                finish();
-            } else {
-                tryGetSavedLogin();
-            }
-        }
-
-        @Override
-        protected void onCancelled() {
-            mAuthTask = null;
-            showProgress(false);
-        }
+    private boolean isConnectedToInternet() {
+        ConnectivityManager connectivityManager
+                = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetwork = connectivityManager.getActiveNetworkInfo();
+        return activeNetwork != null && activeNetwork.isConnectedOrConnecting();
     }
 }
-

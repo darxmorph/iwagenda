@@ -1,8 +1,12 @@
 package com.henry.iwagenda;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
@@ -12,12 +16,16 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
 
+import com.afollestad.materialdialogs.MaterialDialog;
+import com.rengwuxian.materialedittext.MaterialEditText;
 import com.wdullaer.materialdatetimepicker.date.DatePickerDialog;
 
 import org.jsoup.Connection;
@@ -28,11 +36,23 @@ import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
+
+import de.mrapp.android.dialog.MaterialDialogBuilder;
 
 public class AddToIWActivity extends AppCompatActivity {
-    final Map<String,String> data = new HashMap<>();
+    static class data
+    {
+        private static String text = null;
+        private static Date date = null;
+        private static Agenda agenda = null;
+    }
+    final iwAPI iw = new iwAPI();
+    BroadcastReceiver themeChangeReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,23 +61,44 @@ public class AddToIWActivity extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         setupActionBar();
-
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View view) {
-                SharedPreferences auth = AddToIWActivity.this.getSharedPreferences("auth", Context.MODE_PRIVATE);
-                String cookieName = "ZKSID242";
-                String cookieValue = auth.getString("iwcookie", null);
-                EditText homework = (EditText) findViewById(R.id.homework);
-                String text = homework.getText().toString();
-                if (data.containsKey("aID") && data.containsKey("dayOfMonth") && data.containsKey("monthOfYear") && data.containsKey("year") && !TextUtils.isEmpty(text)) {
-                    String aID = data.get("aID");
-                    String dayOfMonth = data.get("dayOfMonth");
-                    String monthOfYear = data.get("monthOfYear");
-                    String year = data.get("year");
+            public void onClick(final View view) {
+                MaterialEditText homework = (MaterialEditText) findViewById(R.id.homework);
+                data.text = homework.getText().toString();
+                if (data.agenda != null && data.date != null && !TextUtils.isEmpty(data.text)) {
 
-                    sendNote(cookieName, cookieValue, aID, dayOfMonth, monthOfYear, year, text);
+                    MaterialDialog.Builder pleaseWaitBuilder = new MaterialDialog.Builder(AddToIWActivity.this)
+                            .title(getText(R.string.please_wait))
+                            .content(getText(R.string.please_wait))
+                            .progress(true, 0);
+
+                    SharedPreferences themePref = AddToIWActivity.this.getSharedPreferences("theme", Context.MODE_PRIVATE);
+                    if (themePref.contains("colorAccent"))
+                        pleaseWaitBuilder.widgetColor(themePref.getInt("colorAccent", R.color.colorAccent));
+
+                    final MaterialDialog pleaseWait = pleaseWaitBuilder.build();
+                    pleaseWait.setCancelable(false);
+                    pleaseWait.setCanceledOnTouchOutside(false);
+                    pleaseWait.show();
+
+                    new AsyncTask<String, Void, Boolean>(){
+                        @Override
+                        protected Boolean doInBackground(String... params) {
+                            return iw.sendEventToIW(new Event(data.text, data.date, true, data.agenda),LoginActivity.cookiejar);
+                        }
+
+                        @Override
+                        protected void onPostExecute(Boolean result) {
+                            pleaseWait.dismiss();
+                            if (result) {
+                                Snackbar.make(view, R.string.add_success, Snackbar.LENGTH_LONG).show();
+                            } else {
+                                Snackbar.make(view, R.string.add_fail, Snackbar.LENGTH_LONG).show();
+                            }
+                        }
+                    }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
                 } else {
                     Snackbar.make(view, R.string.fill_all, Snackbar.LENGTH_LONG).show();
                 }
@@ -74,9 +115,11 @@ public class AddToIWActivity extends AppCompatActivity {
         mSetAgendaButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                selectAgenda(false, null);
+                selectAgenda(LoginActivity.cookiejar);
             }
         });
+
+        paintUI();
     }
 
     private void setupActionBar() {
@@ -97,13 +140,21 @@ public class AddToIWActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
+    @Override
+    protected void onDestroy() {
+        unregisterReceiver(themeChangeReceiver);
+        super.onDestroy();
+    }
+
     private void selectDate() {
         DatePickerDialog.OnDateSetListener odsl = new DatePickerDialog.OnDateSetListener() {
             @Override
             public void onDateSet(DatePickerDialog view, int year, int monthOfYear, int dayOfMonth) {
-                data.put("dayOfMonth", Integer.toString(dayOfMonth));
-                data.put("monthOfYear",Integer.toString(monthOfYear + 1));
-                data.put("year",Integer.toString(year));
+                try {
+                    data.date = iwAPI.iwDateFormats.date.parse(dayOfMonth + "/" + (monthOfYear + 1) + "/" + year);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
                 Button mSetDateButton = (Button) findViewById(R.id.date);
                 mSetDateButton.setText(dayOfMonth + "/" + (monthOfYear + 1) + "/" + year);
                 }
@@ -114,148 +165,103 @@ public class AddToIWActivity extends AppCompatActivity {
                 now.get(Calendar.YEAR),
                 now.get(Calendar.MONTH),
                 now.get(Calendar.DAY_OF_MONTH));
-        dpd.show(getFragmentManager(), "DatePickerDialog");
+        SharedPreferences themePref = AddToIWActivity.this.getSharedPreferences("theme", Context.MODE_PRIVATE);
+        if (themePref.contains("colorAccent"))
+            dpd.setAccentColor(themePref.getInt("colorAccent", R.color.colorAccent));
+        dpd.show(getFragmentManager(), "AddToIW_ChooseDate");
+
     }
 
-    private void sendNote(String cookieName, String cookieValue, String aID, String dayOfMonth, String monthOfYear, String year, String text) {
-        new sendNoteToIW().execute(cookieName, cookieValue, aID, dayOfMonth, monthOfYear, year, text);
-    }
+    private void selectAgenda(final Map<String,String> cookies) {
+        MaterialDialog.Builder pleaseWaitBuilder = new MaterialDialog.Builder(AddToIWActivity.this)
+                .title(getText(R.string.please_wait))
+                .content(getText(R.string.please_wait))
+                .progress(true, 0);
 
-    class sendNoteToIW extends AsyncTask<String, Void, String> {
-        @Override
-        protected String doInBackground(String... params) {
-            String iwres = new String();
-            Map<String,String> iwCookies = null;
-            Elements csrftoken = null;
-            String securityTokenKey = null;
-            String securityTokenValue = null;
+        SharedPreferences themePref = AddToIWActivity.this.getSharedPreferences("theme", Context.MODE_PRIVATE);
+        if (themePref.contains("colorAccent"))
+            pleaseWaitBuilder.widgetColor(themePref.getInt("colorAccent", R.color.colorAccent));
 
-            try {
-                Connection.Response iwRes = Jsoup.connect("http://agora.xtec.cat/escolapuigcerver/intranet/index.php?module=IWagendas&type=user&func=nova")
-                        .userAgent("jsoup")
-                        .cookie(params[0],params[1])
-                        .method(Connection.Method.GET)
-                        .execute();
-                Document addNote = iwRes.parse();
-                iwCookies = iwRes.cookies();
-                csrftoken = addNote.select("[name=csrftoken]");
-            }
-            catch(IOException e) {
-                e.printStackTrace();
+        final MaterialDialog pleaseWait = pleaseWaitBuilder.build();
+        pleaseWait.setCancelable(false);
+        pleaseWait.setCanceledOnTouchOutside(false);
+        pleaseWait.show();
+
+        new AsyncTask<Void, Void, Set<Agenda>>(){
+            @Override
+            protected Set<Agenda> doInBackground(Void... params) {
+                return iw.getAgendas(cookies);
             }
 
-            for (Element token : csrftoken) {
-                securityTokenKey = token.attr("name");
-                securityTokenValue = token.attr("value");
-            }
+            @Override
+            protected void onPostExecute(Set<Agenda> result) {
+                pleaseWait.dismiss();
 
-            try {
-                Connection.Response iwresp = Jsoup.connect("http://agora.xtec.cat/escolapuigcerver/intranet/index.php?module=IWagendas&type=user&func=crear")
-                        .data(securityTokenKey, securityTokenValue)
-                        .data("daid", params[2])
-                        .data("odaid", params[2])
-                        .data("tasca", "0")
-                        .data("gcalendar", "0")
-                        .data("diatriat", params[3])
-                        .data("mestriat", params[4])
-                        .data("anytriat", params[5])
-                        .data("horatriada", "00")
-                        .data("minuttriat", "00")
-                        .data("totdia", "1")
-                        .data("oculta", "0")
-                        .data("protegida", "0")
-                        .data("c1", params[6])
-                        .data("c2", "")
-                        .data("repes", "0")
-                        .data("repesdies", "")
-                        .data("diatriatrep", "")
-                        .data("mestriatrep", "")
-                        .data("anytriatrep", "")
-                        .cookies(iwCookies)
-                        .cookie(params[0], params[1])
-                        .userAgent("jsoup")
-                        .followRedirects(true)
-                        .method(Connection.Method.POST).execute();
-                iwres = iwresp.parse().text();
-            }
-            catch (Exception e) {
-                e.printStackTrace();
-            }
-            return iwres;
-        }
-
-        @Override
-        protected void onPostExecute(String result) {
-            if (result.contains("creat")) {
-                Snackbar.make(findViewById(R.id.fab), R.string.add_success, Snackbar.LENGTH_LONG).show();
-            } else {
-                Snackbar.make(findViewById(R.id.fab), R.string.add_fail, Snackbar.LENGTH_LONG).show();
-            }
-        }
-    }
-
-    private void selectAgenda(boolean hasMap, final Map<String,String> agendes) {
-        final SharedPreferences auth = AddToIWActivity.this.getSharedPreferences("auth", Context.MODE_PRIVATE);
-        final String iwURL = "http://agora.xtec.cat/escolapuigcerver/intranet/index.php?module=IWAgendas&any=" + Calendar.getInstance().get(Calendar.YEAR) + "&llistat=1";
-        final String cookieName = "ZKSID242";
-        final String cookieValue = auth.getString("iwcookie",null);
-            if (hasMap) {
-                final CharSequence[] items = agendes.keySet().toArray(new CharSequence[agendes.size()]);
-                new AlertDialog.Builder(AddToIWActivity.this)
+                final Set<Agenda> agendas = result;
+                Set<String> agendaNameSet = new HashSet<>();
+                for (Agenda a : agendas) {
+                    agendaNameSet.add(a.getName());
+                }
+                final CharSequence[] agendaNames = agendaNameSet.toArray(new CharSequence[agendas.size()]);
+                final AlertDialog chooseAgenda = new AlertDialog.Builder(AddToIWActivity.this)
                         .setTitle(R.string.choose_agenda_add)
-                        .setSingleChoiceItems(items, 1, new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialogInterface, int item) {
-                            }
-                        })
-                        .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialog, int whichButton) {
-                                ListView lw = ((AlertDialog)dialog).getListView();
-                                Object chosenAgenda = lw.getAdapter().getItem(lw.getCheckedItemPosition());
-                                for (String s : agendes.keySet()) {
-                                    if (s == chosenAgenda) {
-                                        data.put("aID",agendes.get(s));
-                                        Button mSetAgendaButton = (Button) findViewById(R.id.agenda);
-                                        mSetAgendaButton.setText(s);
-                                    }
+                        .setSingleChoiceItems(agendaNames, -1, null)
+                        .setPositiveButton(R.string.ok, null)
+                        .create();
+
+                View.OnClickListener dco = new View.OnClickListener() {
+                    @Override
+                    public void onClick (View v) {
+                        ListView lw = chooseAgenda.getListView();
+                        if (lw.getCheckedItemCount() >= 1) {
+                            Object chosenAgenda = lw.getAdapter().getItem(lw.getCheckedItemPosition());
+                            for (Agenda a : agendas) {
+                                if (a.getName() == chosenAgenda) {
+                                    data.agenda = a;
+                                    Button mSetAgendaButton = (Button) findViewById(R.id.agenda);
+                                    mSetAgendaButton.setText(a.getName());
+                                    chooseAgenda.dismiss();
                                 }
                             }
-                        })
-                        .show();
-            } else {
-                new getAgendaList().execute(iwURL,cookieName,cookieValue);
+                        } else {
+                            new AlertDialog.Builder(AddToIWActivity.this)
+                                    .setTitle(R.string.no_agenda_selected)
+                                    .setMessage("noAgendaSelectedDescription")
+                                    .setNegativeButton(R.string.ok, null)
+                                    .show();
+                        }
+                    }
+                };
+                chooseAgenda.show();
+                chooseAgenda.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(dco);
             }
+        }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
-    class getAgendaList extends AsyncTask<String, Void, Elements> {
-        @Override
-        protected Elements doInBackground(String... params) {
-            Elements ev = new Elements();
+    private void paintUI() {
+        tintUI();
+        // Receive theme change events
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("THEME_CHANGED");
 
-            try {
-                Document iw = Jsoup.connect(params[0])
-                        .userAgent("jsoup")
-                        .cookie(params[1],params[2])
-                        .get();
-                Calendar present = Calendar.getInstance();
-                ev = iw.select("[href^=index.php?module=IWAgendas&mes=" + (present.get(Calendar.MONTH) + 1) + "&any=" + present.get(Calendar.YEAR) + "&daid=]");
+        themeChangeReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                tintUI();
             }
+        };
 
-            catch(IOException e) {
-                e.printStackTrace();
-            }
-            return ev;
-        }
-
-        @Override
-        protected void onPostExecute(Elements result) {
-            final Map<String,String> agendes = new HashMap<>();
-            for (Element agenda : result) {
-                String agtitle = agenda.attr("title");
-                String agurl = agenda.attr("href");
-                String id = agurl.substring(agurl.lastIndexOf("&daid=") + 6);
-                agtitle = agtitle.trim().replaceAll(" +", " ");
-                agendes.put(agtitle,id);
-            }
-            selectAgenda(true, agendes);
-        }
+        registerReceiver(themeChangeReceiver, filter);
+    }
+    private void tintUI() {
+        SharedPreferences themePref = AddToIWActivity.this.getSharedPreferences("theme", Context.MODE_PRIVATE);
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        if (themePref.contains("colorPrimary"))
+            toolbar.setBackgroundColor(themePref.getInt("colorPrimary", R.color.colorPrimary));
+        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+        if (themePref.contains("colorAccent"))
+            fab.setBackgroundTintList(ColorStateList.valueOf(themePref.getInt("colorAccent", R.color.colorAccent)));
+        MaterialEditText homework = (MaterialEditText) findViewById(R.id.homework);
+        if (themePref.contains("colorAccent"))
+            homework.setPrimaryColor(themePref.getInt("colorAccent", R.color.colorAccent));
     }
 }

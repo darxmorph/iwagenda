@@ -20,7 +20,7 @@
     <string name="cancel">Cancel</string>
     <string name="homework">Homework</string>
     <string name="nohomework">There\'s no homework for</string>
-    <string name="credits">Original idea:\r\nGuillem Blázquez (4th ESO A)\r\n\r\nProgrammed by:\r\nEnrique Martínez (4th ESO B)</string>
+    <string name="credits">Original idea:\nGuillem Blázquez (4th ESO A)\n\nIcon:\nJordi Zarco (4th ESO A)\n\nProgrammed by:\nEnrique Martínez (4th ESO B)</string>
 
     <!-- Strings related to Settings -->
 
@@ -28,13 +28,30 @@
     <string name="title_activity_settings">Settings</string>
     <string name="pref_header_general">General</string>
     <string name="pref_credits">Credits</string>
-    <string name="selected_agendas">Selected diaries</string>
     <string name="are_you_sure">Are you sure?</string>
+    <string name="log_out">Log out and reset</string>
+    <string name="log_out_description">Log out, reset all application data and return to login page</string>
+    <string name="log_out_reset">Application will reset and return to the login page</string>
+    <string name="selected_agendas">Selected diaries</string>
     <string name="change_agendas_description">Application will restart in order to change your selected diaries</string>
     <string name="choose_agendas">Choose the diaries you want to get notes from</string>
     <string name="change_agendas">Change the diaries you want to get notes from</string>
     <string name="months_show">Months to show</string>
     <string name="months_show_data">Change the amount of months you want to show. Increasing this value will increase data usage.</string>
+
+    <!-- Theme settings -->
+    <string name="pref_header_theme">Themes</string>
+    <string name="color_primary">Primary color</string>
+    <string name="color_primary_description">Change the primary color</string>
+    <string name="color_accent">Accent color</string>
+    <string name="color_accent_description">Change the accent color</string>
+    <string name="color_before">Color for past events</string>
+    <string name="color_before_description">Change the color for past events</string>
+    <string name="color_after">Color for future events</string>
+    <string name="color_after_description">Change the color for future events</string>
+
+    <string name="please_wait">Wait a sec</string>
+    <string name="getting_things_ready">We\'re getting things ready</string>
 
     <!-- Strings from AddToIW -->
     <string name="title_activity_add_to_iw">Add a note to diary</string>
@@ -45,5 +62,11 @@
     <string name="choose_agenda_add">Choose the diary to add the note to</string>
     <string name="add_success">Note added</string>
     <string name="add_fail">Something went wrong</string>
+
+    <!-- Offline -->
+    <string name="internet_not_connected">You\'re not connected to Internet</string>
+    <string name="please_check_internet_connection">Please check your Internet connection</string>
+
+    <string name="retry">Retry</string>
 
 </resources>

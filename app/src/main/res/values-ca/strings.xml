@@ -20,7 +20,7 @@
     <string name="cancel">Cancel·la</string>
     <string name="homework">Deures</string>
     <string name="nohomework">No hi ha deures per al dia</string>
-    <string name="credits">Idea original:\r\nGuillem Blázquez (4t ESO A)\r\n\r\nProgramat per:\r\nEnrique Martínez (4t ESO B)</string>
+    <string name="credits">Idea original:\nGuillem Blázquez (4t ESO A)\n\nIcona:\nJordi Zarco (4t ESO A)\n\nProgramat per:\r\nEnrique Martínez (4t ESO B)</string>
 
     <!-- Strings related to Settings -->
 
@@ -28,13 +28,30 @@
     <string name="title_activity_settings">Configuració</string>
 	<string name="pref_header_general">General</string>
     <string name="pref_credits">Crèdits</string>
-    <string name="selected_agendas">Agendes seleccionades</string>
     <string name="are_you_sure">N\'esteu segurs?</string>
+    <string name="log_out">Tanca la sessió i restaura</string>
+    <string name="log_out_description">Tanca la sessió, elimina les preferències i torna a la pàgina d\'inici</string>
+    <string name="log_out_reset">L\'aplicació es resetejarà i haureu de tornar a iniciar sessió</string>
+    <string name="selected_agendas">Agendes seleccionades</string>
     <string name="change_agendas_description">L\'aplicació es reiniciarà per a poguer canviar les seleccions de les agendes</string>
     <string name="choose_agendas">Escolliu les agendes per obtenir les anotacions</string>
     <string name="change_agendas">Canvieu les agendes des de les quals s\'obtenen les dades</string>
     <string name="months_show">Mesos a mostrar</string>
     <string name="months_show_data">Seleccioneu el nombre de mesos a consultar. Al incrementar aquest valor s\'augmenta l\'ús de dades</string>
+	
+    <!-- Theme settings -->
+    <string name="pref_header_theme">Temes</string>
+    <string name="color_primary">Color primari</string>
+    <string name="color_primary_description">Canvia el color primari</string>
+    <string name="color_accent">Color d\'accent</string>
+    <string name="color_accent_description">Canvia el color d\'accent</string>
+    <string name="color_before">Color per events passats</string>
+    <string name="color_before_description">Canvia el color per events passats</string>
+    <string name="color_after">Color per events futurs</string>
+    <string name="color_after_description">Canvia el color per events futurs</string>
+
+    <string name="please_wait">Un moment</string>
+    <string name="getting_things_ready">Espera mentre preparem algunes coses</string>
 
     <!-- Strings from AddToIW -->
     <string name="title_activity_add_to_iw">Afegeix una anotació a l\'agenda</string>
@@ -45,5 +62,11 @@
     <string name="choose_agenda_add">Escolliu l\'agenda on afegir l\'anotació</string>
     <string name="add_success">S\'ha afegit l\'anotació</string>
     <string name="add_fail">No s\'ha pogut afegit l\'anotació</string>
+
+    <!-- Offline -->
+    <string name="internet_not_connected">No estàs connectat a Internet</string>
+    <string name="please_check_internet_connection">Si us plau, verifiqueu la connexió a Internet</string>
+
+    <string name="retry">Reintenta</string>
 
 </resources>

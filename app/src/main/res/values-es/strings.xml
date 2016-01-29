@@ -20,7 +20,7 @@
     <string name="cancel">Cancelar</string>
     <string name="homework">Deberes</string>
     <string name="nohomework">No hay deberes para el dia</string>
-    <string name="credits">Idea original:\r\nGuillem Blázquez (4t ESO A)\r\n\r\nProgramado por:\r\nEnrique Martínez (4t ESO B)</string>
+    <string name="credits">Idea original:\nGuillem Blázquez (4t ESO A)\n\nIcono:\nJordi Zarco (4t ESO A)\n\nProgramado por:\nEnrique Martínez (4t ESO B)</string>
 
     <!-- Strings related to Settings -->
 
@@ -28,13 +28,30 @@
 	<string name="title_activity_settings">Configuración</string>
     <string name="pref_header_general">General</string>
     <string name="pref_credits">Créditos</string>
-    <string name="selected_agendas">Agendas seleccionadas</string>
     <string name="are_you_sure">¿Estás seguro?</string>
+    <string name="log_out">Cierra la sesión y restaura</string>
+    <string name="log_out_description">Cierra la sesión y vuelve a la página de inicio de sesión</string>
+    <string name="log_out_reset">La aplicación se restaurará y deberás volver a iniciar sesión</string>
+    <string name="selected_agendas">Agendas seleccionadas</string>
     <string name="change_agendas_description">La aplicación se reiniciará para poder cambiar las agendas seleccionadas</string>
     <string name="choose_agendas">Escoge las agendas para obtener las anotaciones</string>
     <string name="change_agendas">Cambia las agendas de las cuales se obtienen las anotaciones</string>
     <string name="months_show">Meses a mostrar</string>
     <string name="months_show_data">Selecciona el número de meses a consultar. Al incrementar este valor se aumenta el uso de datos</string>
+	
+    <!-- Theme settings -->
+    <string name="pref_header_theme">Temas</string>
+    <string name="color_primary">Color primario</string>
+    <string name="color_primary_description">Cambia el color primario</string>
+    <string name="color_accent">Color de acento</string>
+    <string name="color_accent_description">Cambia el color de accento</string>
+    <string name="color_before">Color para eventos pasados</string>
+    <string name="color_before_description">Cambia el color para eventos pasados</string>
+    <string name="color_after">Color para eventos futuros</string>
+    <string name="color_after_description">Cambia el color para eventos futuros</string>
+
+    <string name="please_wait">Un momento</string>
+    <string name="getting_things_ready">Espera mientras preparamos algunas cosas</string>
 
     <!-- Strings from AddToIW -->
     <string name="title_activity_add_to_iw">Añadir una anotación a la agenda</string>
@@ -45,5 +62,11 @@
     <string name="choose_agenda_add">Escoge la agenda en la que añadir la anotación</string>
     <string name="add_success">Se ha añadido la anotación</string>
     <string name="add_fail">No se ha podido añadir la anotación</string>
+
+    <!-- Offline -->
+    <string name="internet_not_connected">No estás conectado a Internet</string>
+    <string name="please_check_internet_connection">Por favor, comprueba tu conexión de red</string>
+
+    <string name="retry">Reintentar</string>
 
 </resources>

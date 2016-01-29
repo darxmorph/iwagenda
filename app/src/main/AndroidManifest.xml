@@ -3,6 +3,8 @@
     package="com.henry.iwagenda" >
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.AUTHENTICATE_ACCOUNTS" />
 
     <application
         android:allowBackup="true"
@@ -28,6 +30,7 @@
         <activity
             android:name=".AddToIWActivity"
             android:label="@string/title_activity_add_to_iw"
+            android:windowSoftInputMode="adjustResize"
             android:theme="@style/AppTheme.NoActionBar" >
         </activity>
         <activity

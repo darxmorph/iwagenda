@@ -5,6 +5,9 @@
     <header android:fragment="com.henry.iwagenda.SettingsActivity$GeneralPreferencesFragment"
         android:title="@string/pref_header_general" android:icon="@drawable/ic_information_outline" />
 
+    <header android:fragment="com.henry.iwagenda.SettingsActivity$ThemePreferencesFragment"
+        android:title="@string/pref_header_theme" android:icon="@drawable/ic_pencil" />
+
     <header android:id="@+id/credits"
         android:title="@string/pref_credits"
         android:icon="@drawable/ic_account" />

@@ -7,9 +7,46 @@
     android:paddingTop="@dimen/activity_vertical_margin" tools:context=".LoginActivity">
 
     <!-- Login progress -->
-    <ProgressBar android:id="@+id/login_progress" style="?android:attr/progressBarStyleLarge"
-        android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp" android:visibility="gone" />
+    <me.zhanghai.android.materialprogressbar.MaterialProgressBar
+        android:id="@+id/login_progress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:indeterminate="true"
+        android:layout_marginBottom="8dp"
+        android:visibility="gone"
+        style="@style/Widget.MaterialProgressBar.ProgressBar.Large"
+        />
+
+    <ScrollView android:id="@+id/no_internet" android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <LinearLayout android:id="@+id/no_internet_layout" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/no_internet_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/internet_not_connected"
+                android:textSize="25dp"
+                />
+
+            <TextView
+                android:id="@+id/no_internet_desc"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/please_check_internet_connection"
+                android:textSize="20dp"
+                />
+
+            <Button android:id="@+id/no_internet_retry" style="?android:textAppearanceSmall"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="16dp" android:text="@string/retry"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+    </ScrollView>
 
     <ScrollView android:id="@+id/login_form" android:layout_width="match_parent"
         android:layout_height="match_parent">

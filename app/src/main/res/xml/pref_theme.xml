@@ -1,0 +1,52 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:custom="http://schemas.android.com/apk/res-auto">
+
+    <de.mrapp.android.preference.ColorPalettePreference
+        android:defaultValue="@color/colorPrimary"
+        custom:showPreview="true"
+        custom:previewShape="square"
+        custom:colorFormat="rgb"
+        custom:dialogPreviewShape="square"
+        custom:colorPalette="@array/flatColors"
+        android:key="colorPrimary"
+        android:summary="@string/color_primary_description"
+        android:title="@string/color_primary"
+        custom:showValueAsSummary="false" />
+
+    <de.mrapp.android.preference.ColorPalettePreference
+        android:defaultValue="@color/colorAccent"
+        custom:showPreview="true"
+        custom:previewShape="square"
+        custom:colorFormat="rgb"
+        custom:dialogPreviewShape="square"
+        custom:colorPalette="@array/flatColors"
+        android:key="colorAccent"
+        android:summary="@string/color_accent_description"
+        android:title="@string/color_accent"
+        custom:showValueAsSummary="false" />
+
+    <de.mrapp.android.preference.ColorPalettePreference
+        android:defaultValue="@color/colorAccent"
+        custom:showPreview="true"
+        custom:previewShape="square"
+        custom:colorFormat="rgb"
+        custom:dialogPreviewShape="square"
+        custom:colorPalette="@array/flatColors"
+        android:key="colorBefore"
+        android:summary="@string/color_before_description"
+        android:title="@string/color_before"
+        custom:showValueAsSummary="false" />
+
+    <de.mrapp.android.preference.ColorPalettePreference
+        android:defaultValue="@color/colorAccent"
+        custom:showPreview="true"
+        custom:previewShape="square"
+        custom:colorFormat="rgb"
+        custom:dialogPreviewShape="square"
+        custom:colorPalette="@array/flatColors"
+        android:key="colorAfter"
+        android:summary="@string/color_after_description"
+        android:title="@string/color_after"
+        custom:showValueAsSummary="false" />
+
+</PreferenceScreen>
