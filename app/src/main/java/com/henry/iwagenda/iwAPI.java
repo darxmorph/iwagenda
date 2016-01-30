@@ -21,7 +21,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class iwAPI {
-    protected static final String userAgent = "com.henry.iwagenda/Android (1.4/internalBeta) jsoup/1.8.3";
+    protected static final String userAgent = "com.henry.iwagenda/Android (1.4/release) jsoup/1.8.3";
     protected static final String iwURL = "http://agora.xtec.cat/escolapuigcerver/intranet/index.php?module=IWAgendas&llistat=1";
 
     @SuppressLint("SimpleDateFormat")
