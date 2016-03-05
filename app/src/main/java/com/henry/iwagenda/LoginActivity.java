@@ -8,9 +8,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.graphics.drawable.ColorDrawable;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 
@@ -19,10 +16,11 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.Window;
+import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.Button;
@@ -34,7 +32,6 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 
 import me.zhanghai.android.materialprogressbar.MaterialProgressBar;
@@ -43,8 +40,8 @@ import me.zhanghai.android.materialprogressbar.MaterialProgressBar;
  * A login screen that offers login via email/password.
  */
 public class LoginActivity extends AppCompatActivity {
-
-    protected static Map<String,String> cookiejar;
+    private UserResources ur = new UserResources(this);
+    protected static Map<String, String> cookiejar;
 
     /**
      * Keep track of the login task to ensure we can cancel it if requested.
@@ -102,10 +99,14 @@ public class LoginActivity extends AppCompatActivity {
         });
 
         // Check internet connection
-        if (!(isConnectedToInternet())) {
-            showNoInternet(true);
-        } else {
+        if (ur.isConnectedToInternet()) {
             tryGetSavedLogin();
+            // startActivity(new Intent(getBaseContext(),MainActivity.class));
+            // finish();
+        } else {
+            // showNoInternet(true);
+            startActivity(new Intent(getBaseContext(), MainActivity.class));
+            finish();
         }
 
         // tryGetSavedLogin();
@@ -164,8 +165,8 @@ public class LoginActivity extends AppCompatActivity {
         SharedPreferences sharedPref = LoginActivity.this.getSharedPreferences("auth", Context.MODE_PRIVATE);
 
         if (sharedPref.contains("username") && sharedPref.contains("password")) {
-            String username = sharedPref.getString("username",null);
-            String password = sharedPref.getString("password",null);
+            String username = sharedPref.getString("username", null);
+            String password = sharedPref.getString("password", null);
             showProgress(true);
             mAuthTask = new UserLoginTask(username, password);
             mAuthTask.execute((Void) null);
@@ -231,12 +232,12 @@ public class LoginActivity extends AppCompatActivity {
         @Override
         protected Boolean doInBackground(Void... params) {
             Connection.Response iwLoginResp;
-            Map<String,String> iwCookies;
+            Map<String, String> iwCookies;
             String securityTokenKey;
             String securityTokenValue;
 
             try {
-                Connection.Response iwRes = Jsoup.connect("https://agora.xtec.cat/escolapuigcerver/intranet/index.php?module=usuaris&type=user&func=login")
+                Connection.Response iwRes = Jsoup.connect(iwAPI.loginURL)
                         .userAgent(iwAPI.userAgent)
                         .method(Connection.Method.GET)
                         .execute();
@@ -245,14 +246,13 @@ public class LoginActivity extends AppCompatActivity {
                 Element csrftoken = loginPage.getElementById("users_login_csrftoken");
                 securityTokenKey = csrftoken.attr("name");
                 securityTokenValue = csrftoken.attr("value");
-            }
-            catch(IOException e) {
+            } catch (IOException e) {
                 e.printStackTrace();
                 return null;
             }
 
             try {
-                iwLoginResp = Jsoup.connect("https://agora.xtec.cat/escolapuigcerver/intranet/index.php?module=usuaris&type=user&func=login")
+                iwLoginResp = Jsoup.connect(iwAPI.loginURL)
                         .data(securityTokenKey, securityTokenValue)
                         .data("authentication_method[modname]", "Users")
                         .data("authentication_method[method]", "uname")
@@ -266,15 +266,14 @@ public class LoginActivity extends AppCompatActivity {
                         .followRedirects(true)
                         .method(Connection.Method.POST).execute();
                 iwCookies = iwLoginResp.cookies();
-            }
-            catch (IOException e) {
+            } catch (IOException e) {
                 e.printStackTrace();
                 return null;
             }
 
             try {
                 if (iwLoginResp.parse().text().contains("Agendes")) {
-                    SharedPreferences sharedPref = LoginActivity.this.getSharedPreferences("auth", Context.MODE_PRIVATE);
+                    SharedPreferences sharedPref = getSharedPreferences("auth", Context.MODE_PRIVATE);
                     SharedPreferences.Editor sharedPrefEdit = sharedPref.edit();
                     cookiejar = iwCookies;
                     sharedPrefEdit.putString("username", mUser);
@@ -282,8 +281,7 @@ public class LoginActivity extends AppCompatActivity {
                     sharedPrefEdit.commit();
                     return true;
                 }
-            }
-            catch(Exception e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
             return false;
@@ -301,7 +299,7 @@ public class LoginActivity extends AppCompatActivity {
             }
 
             if (success) {
-                startActivity(new Intent(getBaseContext(),MainActivity.class));
+                startActivity(new Intent(getBaseContext(), MainActivity.class));
                 finish();
             } else {
                 showProgress(false);
@@ -317,23 +315,25 @@ public class LoginActivity extends AppCompatActivity {
             showProgress(false);
         }
     }
+
     private void paintUI() {
         tintUI();
     }
-    private void tintUI() {
-        SharedPreferences themePref = LoginActivity.this.getSharedPreferences("theme", Context.MODE_PRIVATE);
-        ActionBar bar = getSupportActionBar();
-        MaterialProgressBar progressBar = (MaterialProgressBar) findViewById(R.id.login_progress);
-        if (themePref.contains("colorPrimary"))
-            bar.setBackgroundDrawable(new ColorDrawable(themePref.getInt("colorPrimary", ContextCompat.getColor(LoginActivity.this, R.color.colorPrimary))));
-        if (themePref.contains("colorAccent"))
-            progressBar.setProgressTintList(ColorStateList.valueOf(themePref.getInt("colorAccent", ContextCompat.getColor(LoginActivity.this, R.color.colorAccent))));
-    }
 
-    private boolean isConnectedToInternet() {
-        ConnectivityManager connectivityManager
-                = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-        NetworkInfo activeNetwork = connectivityManager.getActiveNetworkInfo();
-        return activeNetwork != null && activeNetwork.isConnectedOrConnecting();
+    private void tintUI() {
+        ActionBar bar = getSupportActionBar();
+        if (bar != null) {
+            bar.setBackgroundDrawable(new ColorDrawable(ur.getColorPrimary()));
+        }
+
+        MaterialProgressBar progressBar = (MaterialProgressBar) findViewById(R.id.login_progress);
+        progressBar.setProgressTintList(ColorStateList.valueOf(ur.getColorAccent()));
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            Window window = getWindow();
+            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            window.setStatusBarColor(ur.getColorPrimaryDark());
+            // window.setNavigationBarColor(ur.getColorPrimaryDark());
+        }
     }
 }

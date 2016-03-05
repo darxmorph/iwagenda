@@ -11,7 +11,7 @@
 
     <de.mrapp.android.preference.NumberPickerPreference
         android:title="@string/months_show"
-        android:key="months"
+        android:key="calendarMonths"
         android:defaultValue="2"
         custom:min="1"
         android:max="3"

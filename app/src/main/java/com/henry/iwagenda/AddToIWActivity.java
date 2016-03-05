@@ -2,12 +2,12 @@ package com.henry.iwagenda;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -16,33 +16,22 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewManager;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ListView;
 
 import com.afollestad.materialdialogs.MaterialDialog;
 import com.rengwuxian.materialedittext.MaterialEditText;
 import com.wdullaer.materialdatetimepicker.date.DatePickerDialog;
 
-import org.jsoup.Connection;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
-
-import java.io.IOException;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
-import de.mrapp.android.dialog.MaterialDialogBuilder;
 
 public class AddToIWActivity extends AppCompatActivity {
     static class data
@@ -52,7 +41,8 @@ public class AddToIWActivity extends AppCompatActivity {
         private static Agenda agenda = null;
     }
     final iwAPI iw = new iwAPI();
-    BroadcastReceiver themeChangeReceiver;
+    private UserResources ur = new UserResources(this);
+    private BroadcastReceiver themeChangeReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -115,7 +105,7 @@ public class AddToIWActivity extends AppCompatActivity {
         mSetAgendaButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                selectAgenda(LoginActivity.cookiejar);
+                chooseAgenda();
             }
         });
 
@@ -172,10 +162,10 @@ public class AddToIWActivity extends AppCompatActivity {
 
     }
 
-    private void selectAgenda(final Map<String,String> cookies) {
+    private void chooseAgenda() {
         MaterialDialog.Builder pleaseWaitBuilder = new MaterialDialog.Builder(AddToIWActivity.this)
                 .title(getText(R.string.please_wait))
-                .content(getText(R.string.please_wait))
+                .content(getText(R.string.getting_things_ready))
                 .progress(true, 0);
 
         SharedPreferences themePref = AddToIWActivity.this.getSharedPreferences("theme", Context.MODE_PRIVATE);
@@ -190,7 +180,7 @@ public class AddToIWActivity extends AppCompatActivity {
         new AsyncTask<Void, Void, Set<Agenda>>(){
             @Override
             protected Set<Agenda> doInBackground(Void... params) {
-                return iw.getAgendas(cookies);
+                return ur.getWritableAgendasForUser(LoginActivity.cookiejar);
             }
 
             @Override
@@ -241,7 +231,7 @@ public class AddToIWActivity extends AppCompatActivity {
         tintUI();
         // Receive theme change events
         IntentFilter filter = new IntentFilter();
-        filter.addAction("THEME_CHANGED");
+        filter.addAction("THEME_CHANGE");
 
         themeChangeReceiver = new BroadcastReceiver() {
             @Override
@@ -253,15 +243,20 @@ public class AddToIWActivity extends AppCompatActivity {
         registerReceiver(themeChangeReceiver, filter);
     }
     private void tintUI() {
-        SharedPreferences themePref = AddToIWActivity.this.getSharedPreferences("theme", Context.MODE_PRIVATE);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        if (themePref.contains("colorPrimary"))
-            toolbar.setBackgroundColor(themePref.getInt("colorPrimary", R.color.colorPrimary));
+        toolbar.setBackgroundColor(ur.getColorPrimary());
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            Window window = getWindow();
+            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            window.setStatusBarColor(ur.getColorPrimaryDark());
+            // window.setNavigationBarColor(ur.getColorPrimaryDark());
+        }
+
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        if (themePref.contains("colorAccent"))
-            fab.setBackgroundTintList(ColorStateList.valueOf(themePref.getInt("colorAccent", R.color.colorAccent)));
+        fab.setBackgroundTintList(ColorStateList.valueOf(ur.getColorAccent()));
+
         MaterialEditText homework = (MaterialEditText) findViewById(R.id.homework);
-        if (themePref.contains("colorAccent"))
-            homework.setPrimaryColor(themePref.getInt("colorAccent", R.color.colorAccent));
+        homework.setPrimaryColor(ur.getColorAccent());
     }
 }

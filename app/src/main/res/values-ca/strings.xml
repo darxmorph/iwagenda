@@ -70,4 +70,7 @@
 
     <string name="retry">Reintenta</string>
 
+    <!-- Sync -->
+    <string name="syncing">Sincronitzant Agendes</string>
+
 </resources>

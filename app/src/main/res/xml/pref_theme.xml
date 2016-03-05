@@ -32,7 +32,7 @@
         custom:colorFormat="rgb"
         custom:dialogPreviewShape="square"
         custom:colorPalette="@array/flatColors"
-        android:key="colorBefore"
+        android:key="colorPast"
         android:summary="@string/color_before_description"
         android:title="@string/color_before"
         custom:showValueAsSummary="false" />
@@ -44,7 +44,7 @@
         custom:colorFormat="rgb"
         custom:dialogPreviewShape="square"
         custom:colorPalette="@array/flatColors"
-        android:key="colorAfter"
+        android:key="colorFuture"
         android:summary="@string/color_after_description"
         android:title="@string/color_after"
         custom:showValueAsSummary="false" />

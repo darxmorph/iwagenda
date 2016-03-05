@@ -20,6 +20,8 @@ import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.support.v7.app.AlertDialog;
 import android.view.MenuItem;
+import android.view.Window;
+import android.view.WindowManager;
 
 import java.util.List;
 
@@ -35,6 +37,7 @@ import java.util.List;
  * API Guide</a> for more information on developing a Settings UI.
  */
 public class SettingsActivity extends AppCompatPreferenceActivity {
+    private UserResources ur = new UserResources(this);
     private BroadcastReceiver themeChangeReceiver;
 
     @Override
@@ -144,11 +147,11 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
                             .setMessage(R.string.change_agendas_description)
                             .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
                                 public void onClick(DialogInterface dialog, int whichButton) {
-                                    SharedPreferences sharedPref = getActivity().getSharedPreferences("general", Context.MODE_PRIVATE);
-                                    SharedPreferences.Editor sharedPrefEdit = sharedPref.edit();
-                                    if (sharedPref.contains("selectedAgendas")) {
-                                        sharedPrefEdit.remove("selectedAgendas");
-                                        sharedPrefEdit.commit();
+                                    SharedPreferences agendaPref = getActivity().getSharedPreferences("agendas", Context.MODE_PRIVATE);
+                                    SharedPreferences.Editor agendaEdit = agendaPref.edit();
+                                    if (agendaPref.contains("selectedAgendas")) {
+                                        agendaEdit.remove("selectedAgendas");
+                                        agendaEdit.commit();
                                     }
                                     Intent i = getActivity().getBaseContext().getPackageManager().getLaunchIntentForPackage(getActivity().getBaseContext().getPackageName());
                                     i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -173,14 +176,14 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
                             .setMessage(R.string.log_out_reset)
                             .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
                                 public void onClick(DialogInterface dialog, int whichButton) {
-                                    SharedPreferences sharedPref = getActivity().getSharedPreferences("general", Context.MODE_PRIVATE);
-                                    SharedPreferences auth = getActivity().getSharedPreferences("auth", Context.MODE_PRIVATE);
-                                    SharedPreferences.Editor sharedPrefEdit = sharedPref.edit();
-                                    SharedPreferences.Editor authEdit = auth.edit();
-                                    sharedPrefEdit.clear();
-                                    authEdit.clear();
-                                    sharedPrefEdit.commit();
-                                    authEdit.commit();
+                                    String[] sharedPreferencesToRemove = {"auth", "general", "offline", "agendas"};
+                                    for (String sharedPrefName : sharedPreferencesToRemove) {
+                                        SharedPreferences sharedPref = getActivity().getSharedPreferences(sharedPrefName, Context.MODE_PRIVATE);
+                                        SharedPreferences.Editor sharedPrefEdit = sharedPref.edit();
+                                        sharedPrefEdit.clear();
+                                        sharedPrefEdit.commit();
+                                    }
+
                                     Intent i = getActivity().getBaseContext().getPackageManager().getLaunchIntentForPackage(getActivity().getBaseContext().getPackageName());
                                     i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
                                     startActivity(i);
@@ -194,6 +197,18 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
                     return true;
                 }
             });
+
+            Preference calendarMonths = findPreference("calendarMonths");
+            Preference.OnPreferenceChangeListener onCalendarMonthsChange = new Preference.OnPreferenceChangeListener() {
+                @Override
+                public boolean onPreferenceChange(Preference preference, Object newValue) {
+                    Intent intent = new Intent();
+                    intent.setAction("CALENDAR_MONTHS_CHANGE");
+                    getActivity().sendBroadcast(intent);
+                    return true;
+                }
+            };
+            calendarMonths.setOnPreferenceChangeListener(onCalendarMonthsChange);
         }
 
         @Override
@@ -220,14 +235,24 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
 
             Preference colorPrimary = findPreference("colorPrimary");
             Preference colorAccent = findPreference("colorAccent");
-            Preference colorAfter = findPreference("colorAfter");
-            Preference colorBefore = findPreference("colorBefore");
+            Preference colorFuture = findPreference("colorFuture");
+            Preference colorPast = findPreference("colorPast");
 
             Preference.OnPreferenceChangeListener onThemeChange = new Preference.OnPreferenceChangeListener() {
                 @Override
                 public boolean onPreferenceChange(Preference preference, Object newValue) {
                     Intent intent = new Intent();
-                    intent.setAction("THEME_CHANGED");
+                    intent.setAction("THEME_CHANGE");
+                    getActivity().sendBroadcast(intent);
+                    return true;
+                }
+            };
+
+            Preference.OnPreferenceChangeListener onCalendarColorChange = new Preference.OnPreferenceChangeListener() {
+                @Override
+                public boolean onPreferenceChange(Preference preference, Object newValue) {
+                    Intent intent = new Intent();
+                    intent.setAction("CALENDAR_COLOR_CHANGE");
                     getActivity().sendBroadcast(intent);
                     return true;
                 }
@@ -235,8 +260,8 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
 
             colorPrimary.setOnPreferenceChangeListener(onThemeChange);
             colorAccent.setOnPreferenceChangeListener(onThemeChange);
-            colorAfter.setOnPreferenceChangeListener(onThemeChange);
-            colorBefore.setOnPreferenceChangeListener(onThemeChange);
+            colorFuture.setOnPreferenceChangeListener(onCalendarColorChange);
+            colorPast.setOnPreferenceChangeListener(onCalendarColorChange);
         }
 
         @Override
@@ -255,7 +280,7 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
 
         // Receive theme change events
         IntentFilter filter = new IntentFilter();
-        filter.addAction("THEME_CHANGED");
+        filter.addAction("THEME_CHANGE");
 
         themeChangeReceiver = new BroadcastReceiver() {
             @Override
@@ -267,9 +292,14 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
         registerReceiver(themeChangeReceiver, filter);
     }
     private void tintUI() {
-        SharedPreferences themePref = SettingsActivity.this.getSharedPreferences("theme", Context.MODE_PRIVATE);
         ActionBar bar = getSupportActionBar();
-        if (themePref.contains("colorPrimary"))
-            bar.setBackgroundDrawable(new ColorDrawable(themePref.getInt("colorPrimary", ContextCompat.getColor(SettingsActivity.this, R.color.colorPrimary))));
+        bar.setBackgroundDrawable(new ColorDrawable(ur.getColorPrimary()));
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            Window window = getWindow();
+            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            window.setStatusBarColor(ur.getColorPrimaryDark());
+            // window.setNavigationBarColor(ur.getColorPrimaryDark());
+        }
     }
 }

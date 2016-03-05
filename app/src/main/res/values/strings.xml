@@ -70,4 +70,7 @@
 
     <string name="retry">Retry</string>
 
+    <!-- Sync -->
+    <string name="syncing">Syncing Agendas</string>
+
 </resources>

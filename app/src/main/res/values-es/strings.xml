@@ -44,7 +44,7 @@
     <string name="color_primary">Color primario</string>
     <string name="color_primary_description">Cambia el color primario</string>
     <string name="color_accent">Color de acento</string>
-    <string name="color_accent_description">Cambia el color de accento</string>
+    <string name="color_accent_description">Cambia el color de acento</string>
     <string name="color_before">Color para eventos pasados</string>
     <string name="color_before_description">Cambia el color para eventos pasados</string>
     <string name="color_after">Color para eventos futuros</string>
@@ -69,5 +69,8 @@
     <string name="please_check_internet_connection">Por favor, comprueba tu conexión de red</string>
 
     <string name="retry">Reintentar</string>
+	
+    <!-- Sync -->
+    <string name="syncing">Sincronizando Agendas</string>
 
 </resources>

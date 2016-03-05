@@ -7,27 +7,33 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
+import android.graphics.Paint;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
-import android.support.v4.content.ContextCompat;
+import android.support.design.widget.Snackbar;
 import android.support.v4.widget.SwipeRefreshLayout;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewManager;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.AdapterView;
+import android.widget.LinearLayout;
+import android.widget.ListView;
+import android.widget.TextView;
 
 import com.afollestad.materialdialogs.MaterialDialog;
 import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import com.squareup.timessquare.CalendarCellDecorator;
 import com.squareup.timessquare.CalendarCellView;
 import com.squareup.timessquare.CalendarPickerView;
 
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -37,14 +43,18 @@ import java.util.Map;
 import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
-    final iwAPI iw = new iwAPI();
+    final UserResources ur = new UserResources(this);
+    final Offline off = new Offline(this);
+
     private BroadcastReceiver themeChangeReceiver;
+    private BroadcastReceiver offlineSyncCompleteReceiver;
+    private BroadcastReceiver calendarColorChangeReceiver;
+    private BroadcastReceiver calendarMonthsChangeReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        SharedPreferences generalSharedPref = MainActivity.this.getSharedPreferences("general", Context.MODE_PRIVATE);
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -52,28 +62,59 @@ public class MainActivity extends AppCompatActivity {
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startActivity(new Intent(getBaseContext(), AddToIWActivity.class));
+                if (LoginActivity.cookiejar == null) {
+                    if (ur.isConnectedToInternet()) {
+                        Snackbar.make(v, getText(R.string.internet_not_connected), Snackbar.LENGTH_LONG).setAction(getText(R.string.retry), new View.OnClickListener() {
+                            @Override
+                            public void onClick(View view) {
+                                Intent i = getBaseContext().getPackageManager().getLaunchIntentForPackage(getBaseContext().getPackageName());
+                                i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                startActivity(i);
+                            }
+                        }).show();
+                    } else {
+                        Snackbar.make(v, getText(R.string.internet_not_connected), Snackbar.LENGTH_LONG).show();
+                    }
+                } else {
+                    startActivity(new Intent(getBaseContext(), AddToIWActivity.class));
+                }
+
             }
         });
 
-        paintUI();
+        setReceivers();
+
+        if (LoginActivity.cookiejar == null) {
+            ActionBar bar = getSupportActionBar();
+            if (bar != null) {
+                bar.setTitle(bar.getTitle() + " (Offline)");
+            }
+        }
+
+        // off.startSyncService();
 
         // Calendar init
+        int calendarMonths = ur.getSyncMonths();
         Calendar future = Calendar.getInstance();
-        future.add(Calendar.MONTH, generalSharedPref.getInt("months", 2) - 1);
+        future.add(Calendar.MONTH, calendarMonths - 1);
         future.set(Calendar.DATE, future.getActualMaximum(Calendar.DATE));
 
         Calendar present = Calendar.getInstance();
         present.set(Calendar.DATE, present.getActualMinimum(Calendar.DATE));
+
         CalendarPickerView iwcalendar = (CalendarPickerView) findViewById(R.id.iwcalendar);
         iwcalendar.init(present.getTime(), future.getTime());
 
         // Fill calendar
-        int months = generalSharedPref.getInt("months", 2);
         Set<Agenda> agendas = askUserToChooseAgendas(LoginActivity.cookiejar);
+
         if (agendas != null)
-            calendarStuff(agendas, LoginActivity.cookiejar, months);
+            calendarStuff(agendas, LoginActivity.cookiejar, false);
+
+        if (LoginActivity.cookiejar != null)
+            off.syncIfNeeded();
     }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.main, menu);
@@ -93,6 +134,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         unregisterReceiver(themeChangeReceiver);
+        unregisterReceiver(calendarMonthsChangeReceiver);
+        unregisterReceiver(calendarColorChangeReceiver);
+        unregisterReceiver(offlineSyncCompleteReceiver);
         super.onDestroy();
     }
 
@@ -105,16 +149,14 @@ public class MainActivity extends AppCompatActivity {
      * @return          Selected agendas (Set) / Saved agendas (Set)
      */
     private Set<Agenda> askUserToChooseAgendas(final Map<String,String> cookies) {
-        final SharedPreferences generalSharedPref = MainActivity.this.getSharedPreferences("general", Context.MODE_PRIVATE);
-        if (!generalSharedPref.contains("selectedAgendas")) {
-            MaterialDialog.Builder pleaseWaitBuilder = new MaterialDialog.Builder(MainActivity.this)
+        final Set<Agenda> selectedAgendas = ur.getUserSelectedAgendas();
+        if (selectedAgendas == null || selectedAgendas.isEmpty()) {
+            MaterialDialog.Builder pleaseWaitBuilder = new MaterialDialog.Builder(this)
                     .title(getText(R.string.please_wait))
                     .content(getText(R.string.getting_things_ready))
                     .progress(true, 0);
 
-            SharedPreferences themePref = MainActivity.this.getSharedPreferences("theme", Context.MODE_PRIVATE);
-            if (themePref.contains("colorAccent"))
-                pleaseWaitBuilder.widgetColor(themePref.getInt("colorAccent", ContextCompat.getColor(MainActivity.this, R.color.colorAccent)));
+            pleaseWaitBuilder.widgetColor(ur.getColorAccent());
 
             final MaterialDialog pleaseWait = pleaseWaitBuilder.build();
 
@@ -122,10 +164,13 @@ public class MainActivity extends AppCompatActivity {
             pleaseWait.setCanceledOnTouchOutside(false);
             pleaseWait.show();
 
+            final SharedPreferences agendaPref = getSharedPreferences("agendas", Context.MODE_PRIVATE);
+            final SharedPreferences.Editor agendaEdit = agendaPref.edit();
+
             new AsyncTask<Void, Void, Set<Agenda>>(){
                 @Override
                 protected Set<Agenda> doInBackground(Void... params) {
-                    return iw.getAgendas(cookies);
+                    return ur.getUserAgendas(cookies);
                 }
 
                 @Override
@@ -179,27 +224,23 @@ public class MainActivity extends AppCompatActivity {
                                         .setMessage(R.string.app_performance_data)
                                         .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
                                             public void onClick(DialogInterface dialog, int which) {
-                                                SharedPreferences.Editor sharedPrefEdit = generalSharedPref.edit();
                                                 Gson gson = new Gson();
                                                 String json = gson.toJson(selectedAgendas);
-                                                sharedPrefEdit.putString("selectedAgendas", json);
-                                                sharedPrefEdit.commit();
+                                                agendaEdit.putString("selectedAgendas", json);
+                                                agendaEdit.commit();
                                                 askagendas.dismiss();
-                                                int months = generalSharedPref.getInt("months", 2);
-                                                calendarStuff(agendas, LoginActivity.cookiejar, months);
+                                                calendarStuff(agendas, LoginActivity.cookiejar, true);
                                             }
                                         })
                                         .setNegativeButton(R.string.cancel, null)
                                         .show();
                             } else {
-                                SharedPreferences.Editor sharedPrefEdit = generalSharedPref.edit();
                                 Gson gson = new Gson();
                                 String json = gson.toJson(selectedAgendas);
-                                sharedPrefEdit.putString("selectedAgendas", json);
-                                sharedPrefEdit.commit();
+                                agendaEdit.putString("selectedAgendas", json);
+                                agendaEdit.commit();
                                 askagendas.dismiss();
-                                int months = generalSharedPref.getInt("months", 2);
-                                calendarStuff(agendas, LoginActivity.cookiejar, months);
+                                calendarStuff(agendas, LoginActivity.cookiejar, true);
                             }
                         }
                     };
@@ -213,11 +254,7 @@ public class MainActivity extends AppCompatActivity {
 
             return null;
         } else {
-            Gson gson = new Gson();
-            String json = generalSharedPref.getString("selectedAgendas", null);
-            Type type = new TypeToken<Set<Agenda>>(){}.getType();
-
-            return gson.fromJson(json, type); // selectedAgendas
+            return selectedAgendas;
         }
     }
 
@@ -229,138 +266,199 @@ public class MainActivity extends AppCompatActivity {
      * @param  agendas  Set of Agenda to look for events
      * @param  cookies  Session cookies (obtained after login)
      */
-    private void calendarStuff(final Set<Agenda> agendas, final Map<String,String> cookies, final int months) {
+    private void calendarStuff(final Set<Agenda> agendas, final Map<String,String> cookies, boolean resyncFromIW) {
         final CalendarPickerView iwcalendar = (CalendarPickerView) findViewById(R.id.iwcalendar);
         final SwipeRefreshLayout srl = (SwipeRefreshLayout) findViewById(R.id.activity_main_swipe_refresh_layout);
 
         srl.setRefreshing(true);
-        refreshCalendarEvents refreshCalendarEvents = new refreshCalendarEvents(agendas, cookies, months);
-        refreshCalendarEvents.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+        new refreshCalendarEvents(agendas, cookies, resyncFromIW).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
 
         srl.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
-                refreshCalendarEvents refreshCalendarEvents = new refreshCalendarEvents(agendas, cookies, months);
-                refreshCalendarEvents.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+                if (LoginActivity.cookiejar == null) {
+                    if (ur.isConnectedToInternet()) {
+                        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+                        Snackbar.make(fab, getText(R.string.internet_not_connected), Snackbar.LENGTH_LONG).setAction(getText(R.string.retry), new View.OnClickListener() {
+                            @Override
+                            public void onClick(View view) {
+                                Intent i = getBaseContext().getPackageManager().getLaunchIntentForPackage(getBaseContext().getPackageName());
+                                i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                startActivity(i);
+                            }
+                        }).show();
+                        srl.setRefreshing(false);
+                    } else {
+                        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+                        Snackbar.make(fab, getText(R.string.internet_not_connected), Snackbar.LENGTH_LONG).show();
+                        srl.setRefreshing(false);
+                    }
+                } else {
+                    new refreshCalendarEvents(agendas, cookies, true).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+                }
             }
         });
 
         iwcalendar.setOnDateSelectedListener(new CalendarPickerView.OnDateSelectedListener() {
             @Override
             public void onDateSelected(final Date date) {
-
                 MaterialDialog.Builder eventBuilder = new MaterialDialog.Builder(MainActivity.this)
                         .title(getText(R.string.homework) + " " + iwAPI.iwDateFormats.date.format(date))
-                        .content(getText(R.string.please_wait))
-                        .iconRes(R.drawable.ic_pencil)
-                        .progress(true, 0);
+                        .iconRes(R.drawable.ic_pencil);
 
-                SharedPreferences themePref = MainActivity.this.getSharedPreferences("theme", Context.MODE_PRIVATE);
-                if (themePref.contains("colorAccent"))
-                    eventBuilder.widgetColor(themePref.getInt("colorAccent", ContextCompat.getColor(MainActivity.this, R.color.colorAccent)));
+                final Set<Event> offlineEventsForDate = off.getOfflineEventsForDate(date);
 
-                final MaterialDialog event = eventBuilder.build();
+                if (offlineEventsForDate.isEmpty()) {
+                    eventBuilder.content(getText(R.string.nohomework) + " " + iwAPI.iwDateFormats.date.format(date));
 
-                event.getWindow().getAttributes().windowAnimations = R.style.dialog_animation;
+                    final MaterialDialog event = eventBuilder.build();
+                    event.getWindow().getAttributes().windowAnimations = R.style.dialog_animation;
+                    event.show();
+                } else {
+                    Set<String> homeworkStringSet = new HashSet<>();
 
-                event.setCanceledOnTouchOutside(false);
-                event.setCancelable(false);
-
-                event.show();
-
-                new AsyncTask<String, Void, Set<Event>>(){
-                    @Override
-                    protected Set<Event> doInBackground(String... params) {
-                        return iw.getEventsForDate(agendas,date,cookies);
+                    for (Event e : offlineEventsForDate) {
+                        homeworkStringSet.add(e.getText());
                     }
+                    String[] homeworkarray = homeworkStringSet.toArray(new String[homeworkStringSet.size()]);
+                    eventBuilder.items(homeworkarray);
 
-                    @Override
-                    protected void onPostExecute(Set<Event> result) {
-                        String messageToShow = "";
-                        if (!result.isEmpty()) {
-                            for (Event e : result) {
-                                messageToShow += e.getText();
-                                messageToShow += "\n";
-                                messageToShow += "\n";
+                    final MaterialDialog event = eventBuilder.build();
+                    event.getWindow().getAttributes().windowAnimations = R.style.dialog_animation;
+                    event.show();
+
+                    final ListView eventListView = event.getListView();
+
+                    if (eventListView != null) {
+                        eventListView.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                for (Event e : offlineEventsForDate) {
+                                    if (ur.isEventDone(e)) {
+                                        for (int i = 0; i < eventListView.getChildCount(); i++) {
+                                            LinearLayout ll = (LinearLayout) eventListView.getChildAt(i);
+                                            TextView tv = (TextView) ll.getChildAt(0);
+                                            if (e.getText() == tv.getText()) {
+                                                tv.setPaintFlags(tv.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
+                                            }
+                                        }
+                                    }
+                                }
                             }
-                            messageToShow = messageToShow.substring(0, messageToShow.length() - 2);
-                        } else {
-                            messageToShow = getText(R.string.nohomework) + " " + iwAPI.iwDateFormats.date.format(date);
-                        }
-                        // pleaseWait.getProgressBar().setVisibility(View.GONE);
-                        ((ViewManager)event.getProgressBar().getParent()).removeView(event.getProgressBar());
-                        event.getContentView().setPadding(0, 0, 0, 0);
-                        event.setCancelable(true);
-                        event.setCanceledOnTouchOutside(true);
-                        event.getContentView().setText(messageToShow);
-                        // TextView messageView = (TextView) event.findViewById(android.R.id.message);
-                        // messageView.setText(messageToShow);
-                        // event.setMessage(messageToShow);
+                        });
                     }
-                }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+
+                    if (eventListView != null) {
+                        eventListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                            public void onItemClick(AdapterView<?> arg0, View view, int pos, long id) {
+                                LinearLayout ll = (LinearLayout) view;
+
+                                TextView tv = (TextView) ll.getChildAt(0);
+
+                                if ((tv.getPaintFlags() & Paint.STRIKE_THRU_TEXT_FLAG) == Paint.STRIKE_THRU_TEXT_FLAG) {
+                                    tv.setPaintFlags(tv.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
+                                } else {
+                                    tv.setPaintFlags(tv.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
+                                }
+
+                                for (Event e : offlineEventsForDate) {
+                                    if (e.getText() == tv.getText()) {
+                                        ur.setEventStatus(e, (tv.getPaintFlags() & Paint.STRIKE_THRU_TEXT_FLAG) == Paint.STRIKE_THRU_TEXT_FLAG);
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
             }
+
             @Override
-            public void onDateUnselected(Date date) {}
+            public void onDateUnselected(Date date) {
+            }
         });
     }
 
     private class refreshCalendarEvents extends AsyncTask<String, Void, List<CalendarCellDecorator>> {
         final Set<Agenda> agendas;
         final Map<String,String> cookies;
-        final int months;
+        final boolean resyncFromIW;
 
-        refreshCalendarEvents(Set<Agenda> agendas, Map<String,String> cookies, final int months) {
+        refreshCalendarEvents(Set<Agenda> agendas, Map<String,String> cookies, boolean resyncFromIW) {
             this.agendas = agendas;
             this.cookies = cookies;
-            this.months = months;
+            this.resyncFromIW = resyncFromIW;
         }
 
         @Override
         protected List<CalendarCellDecorator> doInBackground(String... params) {
-            SharedPreferences generalSharedPref = MainActivity.this.getSharedPreferences("theme", Context.MODE_PRIVATE);
             List<CalendarCellDecorator> decoratorList = new ArrayList<>();
-            int colorBefore = generalSharedPref.getInt("colorBefore", ContextCompat.getColor(MainActivity.this, R.color.colorAccent));
-            int colorAfter = generalSharedPref.getInt("colorAfter", ContextCompat.getColor(MainActivity.this,R.color.colorAccent));
-            for (Date d : iw.getEventDateSet(agendas, cookies, months)) {
-                if (d.after(new Date())) {
-                    decoratorList.add(new EventDecorator(d,colorAfter));
-                } else {
-                    decoratorList.add(new EventDecorator(d,colorBefore));
-                }
+            int colorPast = ur.getColorPast();
+            int colorFuture = ur.getColorFuture();
+            Set<Date> dates;
+
+            if (resyncFromIW) {
+                off.startSyncService();
+                return null;
             }
+
+            dates = off.getOfflineEventsDates();
+            decoratorList.add(new EventDecorator(dates, colorFuture, colorPast));
             return decoratorList;
         }
 
         @Override
         protected void onPostExecute(List<CalendarCellDecorator> result) {
-            CalendarPickerView iwcalendar = (CalendarPickerView) findViewById(R.id.iwcalendar);
-            SwipeRefreshLayout srl = (SwipeRefreshLayout) findViewById(R.id.activity_main_swipe_refresh_layout);
-            iwcalendar.setDecorators(result);
-            srl.setRefreshing(false);
-        }
-    }
-
-    public class EventDecorator implements CalendarCellDecorator {
-        private Date evd;
-        private int BackgroundColor;
-        public EventDecorator (Date evd, int BackgroundColor) {
-            this.evd = evd;
-            this.BackgroundColor = BackgroundColor;
-        }
-
-        @Override
-        public void decorate(CalendarCellView calendarCellView, Date date) {
-            if(date.equals(evd)) {
-                calendarCellView.setBackgroundColor(BackgroundColor);
+            if (result != null) {
+                CalendarPickerView iwcalendar = (CalendarPickerView) findViewById(R.id.iwcalendar);
+                SwipeRefreshLayout srl = (SwipeRefreshLayout) findViewById(R.id.activity_main_swipe_refresh_layout);
+                iwcalendar.setDecorators(result);
+                srl.setRefreshing(false);
             }
         }
     }
 
-    private void paintUI() {
+    public class EventDecorator implements CalendarCellDecorator {
+        private Set<Date> eventDates;
+        private int futureEventBackgroundColor;
+        private int pastEventBackgroundColor;
+        public EventDecorator (Set<Date> eventDates, int futureEventBackgroundColor, int pastEventBackgroundColor) {
+            this.eventDates = eventDates;
+            this.futureEventBackgroundColor = futureEventBackgroundColor;
+            this.pastEventBackgroundColor = pastEventBackgroundColor;
+        }
+
+        @Override
+        public void decorate(CalendarCellView calendarCellView, Date date) {
+            if (eventDates.contains(date)) {
+                if (date.after(new Date())) {
+                    calendarCellView.setBackgroundColor(futureEventBackgroundColor);
+                } else {
+                    calendarCellView.setBackgroundColor(pastEventBackgroundColor);
+                }
+            } else {
+                calendarCellView.setBackgroundResource(R.drawable.calendar_bg_selector);
+            }
+        }
+    }
+
+    private void setReceivers() {
         tintUI();
+        // Receive sync complete events
+        IntentFilter syncFilter = new IntentFilter();
+        syncFilter.addAction("OFFLINE_SYNC_COMPLETE");
+
+        offlineSyncCompleteReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                new refreshCalendarEvents(ur.getUserSelectedAgendas(), LoginActivity.cookiejar, false).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+            }
+        };
+
+        registerReceiver(offlineSyncCompleteReceiver, syncFilter);
+
         // Receive theme change events
-        IntentFilter filter = new IntentFilter();
-        filter.addAction("THEME_CHANGED");
+        IntentFilter themeFilter = new IntentFilter();
+        themeFilter.addAction("THEME_CHANGE");
 
         themeChangeReceiver = new BroadcastReceiver() {
             @Override
@@ -369,22 +467,63 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
-        registerReceiver(themeChangeReceiver, filter);
+        registerReceiver(themeChangeReceiver, themeFilter);
+
+        // Receive calendar color change events
+        IntentFilter calendarColorFilter = new IntentFilter();
+        calendarColorFilter.addAction("CALENDAR_COLOR_CHANGE");
+
+        calendarColorChangeReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                new refreshCalendarEvents(ur.getUserAgendas(LoginActivity.cookiejar), LoginActivity.cookiejar, false).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+            }
+        };
+
+        registerReceiver(calendarColorChangeReceiver, calendarColorFilter);
+
+        // Receive calendar months change events
+        IntentFilter calendarMonthsFilter = new IntentFilter();
+        calendarMonthsFilter.addAction("CALENDAR_MONTHS_CHANGE");
+
+        calendarMonthsChangeReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                int calendarMonths = ur.getSyncMonths();
+                Calendar future = Calendar.getInstance();
+                future.add(Calendar.MONTH, calendarMonths - 1);
+                future.set(Calendar.DATE, future.getActualMaximum(Calendar.DATE));
+
+                Calendar present = Calendar.getInstance();
+                present.set(Calendar.DATE, present.getActualMinimum(Calendar.DATE));
+
+                CalendarPickerView iwcalendar = (CalendarPickerView) findViewById(R.id.iwcalendar);
+                iwcalendar.init(present.getTime(), future.getTime());
+
+                if (LoginActivity.cookiejar != null) {
+                    off.startSyncService();
+                }
+            }
+        };
+
+        registerReceiver(calendarMonthsChangeReceiver, calendarMonthsFilter);
     }
 
     private void tintUI() {
-        SharedPreferences themePref = MainActivity.this.getSharedPreferences("theme", Context.MODE_PRIVATE);
         // Toolbar
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        if (themePref.contains("colorPrimary"))
-            toolbar.setBackgroundColor(themePref.getInt("colorPrimary", ContextCompat.getColor(MainActivity.this, R.color.colorPrimary)));
+        toolbar.setBackgroundColor(ur.getColorPrimary());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            Window window = getWindow();
+            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            window.setStatusBarColor(ur.getColorPrimaryDark());
+            // window.setNavigationBarColor(ur.getColorPrimaryDark());
+        }
         // FloatingActionButton
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        if (themePref.contains("colorAccent"))
-            fab.setBackgroundTintList(ColorStateList.valueOf(themePref.getInt("colorAccent", ContextCompat.getColor(MainActivity.this, R.color.colorAccent))));
+        fab.setBackgroundTintList(ColorStateList.valueOf(ur.getColorAccent()));
         // SwipeRefreshLayout
         SwipeRefreshLayout srl = (SwipeRefreshLayout) findViewById(R.id.activity_main_swipe_refresh_layout);
-        if (themePref.contains("colorAccent"))
-            srl.setColorSchemeColors(themePref.getInt("colorAccent", ContextCompat.getColor(MainActivity.this, R.color.colorAccent)));
+        srl.setColorSchemeColors(ur.getColorAccent());
     }
 }

@@ -8,8 +8,8 @@ android {
         applicationId "com.henry.iwagenda"
         minSdkVersion 15
         targetSdkVersion 23
-        versionCode 4
-        versionName "1.4"
+        versionCode 5
+        versionName "1.5"
     }
     buildTypes {
         release {
@@ -22,17 +22,17 @@ android {
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     testCompile 'junit:junit:4.12'
-    compile 'com.android.support:appcompat-v7:23.1.1'
-    compile 'com.android.support:design:23.1.1'
+    compile 'com.android.support:appcompat-v7:23.2.0'
+    compile 'com.android.support:design:23.2.0'
     compile 'org.jsoup:jsoup:1.8.3'
-    compile 'com.squareup:android-times-square:1.6.4'
-    compile 'com.wdullaer:materialdatetimepicker:1.5.4'
-    compile 'com.github.michael-rapp:android-material-preferences:2.0.0'
-    compile 'com.google.code.gson:gson:2.5'
-    compile 'com.android.support:support-v4:23.1.1'
-    compile('com.github.afollestad.material-dialogs:core:0.8.5.3@aar') {
+    compile 'com.squareup:android-times-square:1.6.5'
+    compile 'com.wdullaer:materialdatetimepicker:2.2.0'
+    compile 'com.github.michael-rapp:android-material-preferences:2.0.4'
+    compile 'com.google.code.gson:gson:2.6.2'
+    compile 'com.android.support:support-v4:23.2.0'
+    compile('com.github.afollestad.material-dialogs:core:0.8.5.6@aar') {
         transitive = true
     }
-    compile 'me.zhanghai.android.materialprogressbar:library:1.1.4'
+    compile 'me.zhanghai.android.materialprogressbar:library:1.1.5'
     compile 'com.rengwuxian.materialedittext:library:2.1.4'
 }

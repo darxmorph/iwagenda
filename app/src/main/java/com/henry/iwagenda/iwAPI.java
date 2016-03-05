@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -21,7 +20,8 @@ import java.util.Map;
 import java.util.Set;
 
 public class iwAPI {
-    protected static final String userAgent = "com.henry.iwagenda/Android (1.4/release) jsoup/1.8.3";
+    protected static final String userAgent = "com.henry.iwagenda/Android (1.5/release) jsoup/1.8.3";
+    protected static final String loginURL = "https://agora.xtec.cat/escolapuigcerver/intranet/index.php?module=usuaris&type=user&func=login";
     protected static final String iwURL = "http://agora.xtec.cat/escolapuigcerver/intranet/index.php?module=IWAgendas&llistat=1";
 
     @SuppressLint("SimpleDateFormat")
@@ -38,19 +38,21 @@ public class iwAPI {
     }
 
     /**
-     * Gets dates that contains events
+     * Gets dates that contain events on the specified date's month
+     * DEPRECATED: use {@link #getEventsForMonth(Agenda, Date, Map)} instead
      *
-     * @param  agendas  Set that contains agendas to look for events
+     * @param  agenda   Agenda to look for events
+     * @param  date     Date to look for events (Only month and year will be used)
      * @param  cookies  Session cookies (obtained after login)
-     * @param  months   Number of months in the future to look for events
      * @return          Dates that contain events (Set)
      */
-    public Set<Date> getEventDateSet(Set<Agenda> agendas, Map<String, String> cookies, int months) {
+    @Deprecated
+    public Set<Date> getEventDates(Agenda agenda, Date date, Map<String, String> cookies) {
         Set<Date> homeworkDateSet = new HashSet<>();
         Elements iwe = new Elements();
 
         try {
-            iwe = new parseIWagenda(agendas, months, cookies).execute().get();
+            iwe = new parseIWagenda(agenda, date, cookies).execute().get();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -68,16 +70,16 @@ public class iwAPI {
     }
 
     /**
-     * Gets a set of events in the date specified
+     * Gets a set of events for the date specified
      *
-     * @param  agendas  Set that contains the list of agenda IDs to check
+     * @param  agenda   Agenda to look for events
      * @param  date     Date to get the events from
      * @param  cookies  Session cookies (obtained after login)
      * @return          Events for date (Set)
      */
-    public Set<Event> getEventsForDate(Set<Agenda> agendas, Date date, Map<String, String> cookies) {
+    public Set<Event> getEventsForDate(Agenda agenda, Date date, Map<String, String> cookies) {
         try {
-            return new parseIWday(date,agendas,cookies).execute().get();
+            return new parseIWday(date,agenda,cookies).execute().get();
         } catch (Exception e) {
             e.printStackTrace();
             return new HashSet<>();
@@ -91,7 +93,7 @@ public class iwAPI {
      * @return          Agendas (Set)
      */
     public Set<Agenda> getAgendas(Map<String,String> cookies) {
-        Set<Agenda> agendaSet = new HashSet<>();
+        Set<Agenda> userAgendas = new HashSet<>();
 
         Elements el = new Elements();
         try {
@@ -105,10 +107,10 @@ public class iwAPI {
             String agurl = agenda.attr("href");
             String id = agurl.substring(agurl.lastIndexOf("&daid=") + 6);
             agtitle = agtitle.trim().replaceAll(" +", " ");
-            agendaSet.add(new Agenda(id,agtitle));
+            userAgendas.add(new Agenda(id,agtitle));
         }
 
-        return agendaSet;
+        return userAgendas;
     }
 
     /**
@@ -127,33 +129,58 @@ public class iwAPI {
         }
     }
 
+    /**
+     * Check if an Agenda is writable for the current user
+     *
+     * @param  agenda   The agenda to check
+     * @param  cookies  Session cookies (obtained after login)
+     * @return          true if writable, otherwise false
+     */
+    public boolean isAgendaWritable(Agenda agenda, Map<String, String> cookies) {
+        try {
+            return new isAgendaWritable(agenda, cookies).execute().get();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * Gets a set of events for the month specified
+     *
+     * @param  agenda   Agenda to get events from
+     * @param  date     Date to get the events from (Only month and year will be used)
+     * @param  cookies  Session cookies (obtained after login)
+     * @return          Events for date (Set)
+     */
+    public Set<Event> getEventsForMonth(Agenda agenda, Date date, Map<String, String> cookies) {
+        try {
+            return new getEventsForMonth(date,agenda,cookies).execute().get();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new HashSet<>();
+        }
+    }
+
     private class parseIWagenda extends AsyncTask<String, Void, Elements> {
-        private final Set<Agenda> agendas;
-        private final int months;
+        private final Agenda agenda;
+        private final Date date;
         private final Map<String, String> cookies;
 
-        parseIWagenda(Set<Agenda> agendas, int months, Map<String, String> cookies) {
-            this.agendas = agendas;
-            this.months = months;
+        parseIWagenda(Agenda agenda, Date date, Map<String, String> cookies) {
+            this.agenda = agenda;
+            this.date = date;
             this.cookies = cookies;
         }
 
         @Override
         protected Elements doInBackground(String... params) {
             Elements iwe = new Elements();
-            Calendar present = Calendar.getInstance();
-
-            Calendar lastDate = Calendar.getInstance();
-            lastDate.add(Calendar.MONTH,months);
 
             try {
-                for (present.get(Calendar.MONTH); present.before(lastDate); present.add(Calendar.MONTH, 1)) {
-                    for (Agenda a : agendas) {
-                        Document iw = Jsoup.connect(iwAPI.iwURL + "&any=" + present.get(Calendar.YEAR) + "&mes=" + (present.get(Calendar.MONTH) + 1) + "&daid=" + a.getId()).cookies(cookies).userAgent(iwAPI.userAgent).get();
-                        Elements ev = iw.getElementsByAttributeValueStarting("id", "note_");
-                        iwe.addAll(ev);
-                    }
-                }
+                Document iw = Jsoup.connect(iwAPI.iwURL + "&any=" + iwDateFormats.year.format(date) + "&mes=" + iwDateFormats.month.format(date) + "&daid=" + agenda.getId()).cookies(cookies).userAgent(iwAPI.userAgent).get();
+                Elements ev = iw.getElementsByAttributeValueStarting("id", "note_");
+                iwe.addAll(ev);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -188,12 +215,12 @@ public class iwAPI {
 
     private class parseIWday extends AsyncTask<String, Void, Set<Event>> {
         final Date date;
-        final Set<Agenda> agendas;
+        final Agenda agenda;
         final Map<String,String> cookies;
 
-        parseIWday(Date date, Set<Agenda> agendas, Map<String,String> cookies) {
+        parseIWday(Date date, Agenda agenda, Map<String,String> cookies) {
             this.date = date;
-            this.agendas = agendas;
+            this.agenda = agenda;
             this.cookies = cookies;
         }
 
@@ -202,52 +229,44 @@ public class iwAPI {
             Set<Event> eventsForDate = new HashSet<>();
 
             try {
-                for (Agenda a : agendas) {
-                    Document iw = Jsoup.connect(iwAPI.iwURL + "&any=" + iwDateFormats.year.format(date) + "&mes=" + iwDateFormats.month.format(date) + "&dia=" + iwDateFormats.day.format(date) + "&daid=" + a.getId()).cookies(cookies).userAgent(iwAPI.userAgent).get();
-                    Elements events = iw.getElementsByAttributeValueStarting("id", "note_");
+                Document iw = Jsoup.connect(iwAPI.iwURL + "&any=" + iwDateFormats.year.format(date) + "&mes=" + iwDateFormats.month.format(date) + "&dia=" + iwDateFormats.day.format(date) + "&daid=" + agenda.getId()).cookies(cookies).userAgent(iwAPI.userAgent).get();
+                Elements events = iw.getElementsByAttributeValueStarting("id", "note_");
 
-                    if (events.hasText()) {
-                        for (Element element : events) {
-                            // Event constructors
-                            final String eventText;
-                            final Date eventDate;
-                            final boolean eventIsAllDay;
-                            final Agenda agenda;
+                if (events.hasText()) {
+                    for (Element element : events) {
+                        // Event constructors
+                        final String eventText;
+                        final Date eventDate;
+                        final boolean eventIsAllDay;
 
-                            Date d = date;
-                            agenda = a;
+                        Date d = date;
 
-                            String text = element.text();
-                            if (text.contains("Tot el dia")) {
-                                text = text.replace("Tot el dia", "");
-                                eventIsAllDay = true;
-                            } else {
-                                eventIsAllDay = false;
-                                try {
-                                    d = iwDateFormats.full.parse(iwDateFormats.date.format(date) + iwDateFormats.time.format(iwDateFormats.time.parse(element.text())));
-                                    text = text.replace(iwDateFormats.time.format(d), "");
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                }
+                        String text = element.text();
+                        if (text.contains("Tot el dia")) {
+                            text = text.replace("Tot el dia", "");
+                            eventIsAllDay = true;
+                        } else {
+                            eventIsAllDay = false;
+                            try {
+                                d = iwDateFormats.full.parse(iwDateFormats.date.format(date) + iwDateFormats.time.format(iwDateFormats.time.parse(text)));
+                                text = text.replace(iwDateFormats.time.format(d), "");
+                            } catch (Exception e) {
+                                e.printStackTrace();
                             }
+                        }
 
-                            eventDate = d;
-                            text = text.replace("---", "");
+                        eventDate = d;
+                        text = text.replace("---", "");
 
-                            // Weird IW bug
-                            if (!a.getId().equals("0"))
-                                text = text.substring(1);
+                        text = text.trim();
+                        eventText = text;
 
-                            text = text.trim();
-                            eventText = text;
-
-                            if (!a.getId().equals("0")) {
+                        if (!agenda.getId().equals("0")) {
+                            eventsForDate.add(new Event(eventText, eventDate, eventIsAllDay, agenda));
+                        } else {
+                            // If got this item from Personal, make sure it didn't come from subscribed Agendas
+                            if (!text.contains("Altres")) {
                                 eventsForDate.add(new Event(eventText, eventDate, eventIsAllDay, agenda));
-                            } else {
-                                // If got this item from Personal, make sure it didn't come from subscribed Agendas
-                                if (!text.contains("Altres")) {
-                                    eventsForDate.add(new Event(eventText, eventDate, eventIsAllDay, agenda));
-                                }
                             }
                         }
                     }
@@ -262,7 +281,83 @@ public class iwAPI {
         }
     }
 
-    class sendEventToIW extends AsyncTask<String, Void, Boolean> {
+    private class getEventsForMonth extends AsyncTask<String, Void, Set<Event>> {
+        final Date date;
+        final Agenda agenda;
+        final Map<String,String> cookies;
+
+        getEventsForMonth(Date date, Agenda agenda, Map<String,String> cookies) {
+            this.date = date;
+            this.agenda = agenda;
+            this.cookies = cookies;
+        }
+
+        @Override
+        protected Set<Event> doInBackground(String... params) {
+            Set<Event> eventsForDate = new HashSet<>();
+
+            try {
+                Document iw = Jsoup.connect(iwAPI.iwURL + "&any=" + iwDateFormats.year.format(date) + "&mes=" + iwDateFormats.month.format(date) + "&daid=" + agenda.getId()).cookies(cookies).userAgent(iwAPI.userAgent).get();
+                Elements events = iw.getElementsByAttributeValueStarting("id", "note_");
+
+                if (events.hasText()) {
+                    for (Element element : events) {
+                        // Event constructors
+                        final String eventText;
+                        final Date eventDate;
+                        final boolean eventIsAllDay;
+
+                        Date d = date;
+
+                        String text = element.text();
+
+                        try {
+                            d = iwDateFormats.date.parse(text);
+                            text = text.replace(iwDateFormats.date.format(d), "");
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+
+                        if (text.contains("Tot el dia")) {
+                            text = text.replace("Tot el dia", "");
+                            eventIsAllDay = true;
+                        } else {
+                            eventIsAllDay = false;
+                            try {
+                                d = iwDateFormats.full.parse(iwDateFormats.date.format(d) + iwDateFormats.time.format(iwDateFormats.time.parse(text)));
+                                text = text.replace(iwDateFormats.time.format(d), "");
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
+
+                        eventDate = d;
+                        text = text.replace("---", "");
+
+                        text = text.trim();
+                        eventText = text;
+
+                        if (!agenda.getId().equals("0")) {
+                            eventsForDate.add(new Event(eventText, eventDate, eventIsAllDay, agenda));
+                        } else {
+                            // If got this item from Personal, make sure it didn't come from subscribed Agendas
+                            if (!text.contains("Altres")) {
+                                eventsForDate.add(new Event(eventText, eventDate, eventIsAllDay, agenda));
+                            }
+                        }
+                    }
+                }
+            }
+
+            catch(Throwable t) {
+                t.printStackTrace();
+            }
+
+            return eventsForDate;
+        }
+    }
+
+    private class sendEventToIW extends AsyncTask<String, Void, Boolean> {
         final Event event;
         final Agenda agenda;
         final Map<String,String> cookies;
@@ -334,6 +429,27 @@ public class iwAPI {
             }
 
             return iwres.contains("creat");
+        }
+    }
+
+    private class isAgendaWritable extends AsyncTask<String, Void, Boolean> {
+        private final Agenda agenda;
+        private final Map<String, String> cookies;
+
+        isAgendaWritable(Agenda agenda, Map<String, String> cookies) {
+            this.agenda = agenda;
+            this.cookies = cookies;
+        }
+
+        @Override
+        protected Boolean doInBackground(String... params) {
+            try {
+                Document iw = Jsoup.connect(iwAPI.iwURL + "&daid=" + agenda.getId()).cookies(cookies).userAgent(iwAPI.userAgent).get();
+                return iw.text().contains("Insereix");
+            } catch (Exception e) {
+                e.printStackTrace();
+                return false;
+            }
         }
     }
 }
